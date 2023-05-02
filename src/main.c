@@ -9,10 +9,11 @@
 #include <signal.h>
 #include <log.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "daemon.h"
 
 
-//static const size_t STACK_SIZE = 256*1024;
+static const size_t STACK_SIZE = 256*1024;
 
 static struct daemon g_daemon = {0};
 
@@ -37,8 +38,50 @@ static int install_signals(void){
     return rc;
 }
 
-static void client_handler(int fd){
+static void client_handler_async(__async__, void *arg){
+    int fd = (int)(size_t)arg;
     log_trace("handle incoming connection: %d", fd);
+    int rc = 0;
+    struct msg_stream *stream = NULL;
+    rc = init_msg_stream(&stream, g_daemon.event_loop, fd);
+    if(rc < 0){
+        log_error("init_msg_stream failed: %s", strerror(-rc));
+        goto err_close_fd;
+    }
+    char *buf[256];
+    while(1){
+        rc = msg_stream_read(__await__, stream, buf, sizeof(buf) - 1, 3*1000*1000);
+        if(rc < 0){
+            log_error("msg_stream_read failed: %s", strerror(-rc));
+            goto err_close_stream;
+        }
+        if(rc == 0){
+            log_trace("read eof");
+            break;
+        }
+        int len = rc;
+        buf[len++] = '\0';
+        log_trace("read %d bytes: %s", len, buf);
+        se_task_usleep(__await__, g_daemon.event_loop, 5*1000*1000);
+        log_trace("after 5 sec delay");
+        rc = msg_stream_write(__await__, stream, buf, len, 3*1000*1000);
+        if(rc < 0){
+            log_error("msg_stream_write failed: %s", strerror(-rc));
+            goto err_close_stream;
+        }
+        se_task_usleep(__await__, g_daemon.event_loop, 5*1000*1000);
+        log_trace("after 5 sec delay");
+    }
+err_close_stream:
+    destroy_msg_stream(stream);
+    return;
+err_close_fd:
+    close(fd);
+    return;
+}
+
+static void client_handler(int fd){
+    se_task_create(g_daemon.event_loop, STACK_SIZE, client_handler_async, (void *)(size_t)fd);
 }
 
 int main(int argc, char *argv[]) {

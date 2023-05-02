@@ -49,6 +49,9 @@ int setup_unix_listening_socket(struct daemon *daemon, void (*handler)(int fd)){
     int rc = 0;
     int fd = -1;
 
+    int destroy_handler_armed = 0;
+    int fd_owned = 0;
+
     fd = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
     if(fd < 0){
         log_error("socket() failed: %s", strerror(errno));
@@ -114,12 +117,15 @@ int setup_unix_listening_socket(struct daemon *daemon, void (*handler)(int fd)){
         goto err_unref_src;
     }
 
+    fd_owned = 1;
+
     rc = sd_event_source_set_destroy_callback(daemon->server_unix_sock_event_source, unix_server_listen_destroy_handler);
 
     if(rc < 0){
         log_error("sd_event_source_set_destroy_callback() failed: %s", strerror(-rc));
         goto err_unref_src;
     }
+    destroy_handler_armed = 1;
 
     sd_event_source_set_description(daemon->server_unix_sock_event_source, "unix_server_listen_handler");
 
@@ -129,12 +135,18 @@ err_unref_src:
     sd_event_source_disable_unrefp(&daemon->server_unix_sock_event_source);
 
 err_free_str:
-    free((void *)arg->server_path);
+    if(!destroy_handler_armed){
+        free((void *)arg->server_path);
+    }
 
 err_free_mem:
-    free(arg);
+    if(!destroy_handler_armed){
+        free(arg);
+    }
 
 err_close_fd:
-    close(fd);
+    if(!fd_owned){
+        close(fd);
+    }
     return rc;
 }
