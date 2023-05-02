@@ -3,7 +3,8 @@
         "s_list.h": "c",
         "s_task.h": "c",
         "stdint.h": "c",
-        "sd-daemon.h": "c"
+        "sd-daemon.h": "c",
+        "sd-event.h": "c"
     },
     "editor.tabSize": 4,
     "files.trimFinalNewlines": true,
