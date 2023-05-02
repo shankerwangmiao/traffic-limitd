@@ -3,5 +3,9 @@
         "s_list.h": "c",
         "s_task.h": "c",
         "stdint.h": "c"
-    }
+    },
+    "editor.tabSize": 4,
+    "files.trimFinalNewlines": true,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true
 }
