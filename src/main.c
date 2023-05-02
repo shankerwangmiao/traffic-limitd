@@ -6,6 +6,9 @@
 #include <se_libs.h>
 #include <errno.h>
 #include <string.h>
+#include <signal.h>
+#include <log.h>
+#include <stdlib.h>
 
 
 static s_event_t  g_event;
@@ -53,32 +56,70 @@ static void main_task(__async__, void *arg) {
 
     g_closed = true;
     s_event_set(&g_event);
-    // int rc = sd_event_exit(g_sd_event, 0);
-    // if(rc < 0){
-    //     printf("sd_event_exit failed: %s\n", strerror(-rc));
-    // }
+}
+
+static int exit_req_handler(sd_event_source *s, const struct signalfd_siginfo *si, void *userdata){
+    sd_event_source_disable_unref(s);
+    int rc = sd_event_exit(g_sd_event, 0);
+    if(rc < 0){
+         log_error("sd_event_exit failed: %s", strerror(-rc));
+    }
+    return 0;
+}
+
+static int install_signals(void){
+    sigset_t mask;
+    sigaddset(&mask, SIGINT);
+    sigaddset(&mask, SIGTERM);
+    int rc = 0;
+    rc = sigprocmask(SIG_BLOCK, &mask, NULL);
+    if(rc < 0){
+        return -errno;
+    }
+    return rc;
 }
 
 int main(int argc, char *argv[]) {
     (void)argv;
 
+    if(getenv("SYSTEMD")){
+        log_set_systemd(true);
+    }
+
     s_task_init_system();
 
-    printf("init_sys\n");
+    log_trace("init_sys");
 
     int rc = 0;
+
+    rc = install_signals();
+    if(rc < 0){
+        log_error("install_signals failed: %s", strerror(-rc));
+        return -1;
+    }
 
     rc = sd_event_default(&g_sd_event);
 
     if(rc < 0){
-        printf("get sd event failed: %s\n", strerror(-rc));
+        log_error("get sd event failed: %s", strerror(-rc));
+        return -1;
+    }
+
+    rc = sd_event_add_signal(g_sd_event, NULL, SIGINT, exit_req_handler, NULL);
+    if(rc < 0){
+        log_error("add signal failed: %s", strerror(-rc));
+        return -1;
+    }
+    rc = sd_event_add_signal(g_sd_event, NULL, SIGTERM, exit_req_handler, NULL);
+    if(rc < 0){
+        log_error("add signal failed: %s", strerror(-rc));
         return -1;
     }
 
     //s_task_create(g_stack_main, sizeof(g_stack_main), main_task, (void *)(size_t)argc);
     se_task_create(g_sd_event, STACK_SIZE, main_task, (void *)(size_t)argc);
 
-    printf("main_create\n");
+    log_trace("main_create");
 
     while(1){
         s_task_main_loop_once();
@@ -87,12 +128,12 @@ int main(int argc, char *argv[]) {
             break;
         }else{
             if(rc < 0){
-                printf("sd_event_run failed: %s\n", strerror(-rc));
+                log_error("sd_event_run failed: %s", strerror(-rc));
                 return -1;
             }
         }
     }
-    printf("all task is over\n");
+    log_info("all task is over");
     sd_event_unrefp(&g_sd_event);
     return 0;
 }
