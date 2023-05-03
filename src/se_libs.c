@@ -44,7 +44,13 @@ int se_task_usleep(__async__, sd_event *event, uint64_t usec) {
         return rc;
     }
 
-    s_event_wait(__await__, &this_arg.event);
+    rc = s_event_wait(__await__, &this_arg.event);
+
+    if(rc < 0){
+        log_info("timer interrupted");
+        rc = -EINTR;
+        goto err_unref_src;
+    }
 
     if(this_arg.error != 0){
         rc = this_arg.error;
@@ -55,7 +61,7 @@ int se_task_usleep(__async__, sd_event *event, uint64_t usec) {
     }
 
 err_unref_src:
-    sd_event_source_unref(this_arg.source);
+    sd_event_source_disable_unref(this_arg.source);
     this_arg.source = NULL;
     return rc;
 }
@@ -286,7 +292,22 @@ static ssize_t msg_stream_do_io(__async__, struct msg_stream *stream, void *buf,
         return rc;
     }
 
-    s_event_wait(__await__, &stream->event);
+    rc = s_event_wait(__await__, &stream->event);
+
+    if(rc < 0){
+        log_info("wait interrupted");
+        if(stream->timer){
+            sd_event_source_disable_unref(stream->timer);
+            stream->timer = NULL;
+        }
+        rc = sd_event_source_set_io_events(stream->source, 0);
+        if(rc < 0){
+            log_error("sd_event_source_set_io_events: %s", strerror(-rc));
+        }
+        stream->state = NOOP;
+        return -EINTR;
+    }
+
     if(stream->error < 0){
         return stream->error;
     }else{
