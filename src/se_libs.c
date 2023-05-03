@@ -66,12 +66,20 @@ err_unref_src:
     return rc;
 }
 
+struct memory_to_free{
+    void *mem;
+    void (*free_fn)(void *);
+    struct memory_to_free *next;
+};
+
 struct se_task_arg{
     s_task_fn_t entry;
     sd_event_source *source;
     sd_event *event;
     size_t task_id;
     void *arg;
+    struct memory_to_free *memory_to_free;
+    uint8_t stack[];
 };
 
 // Called on main stack
@@ -91,10 +99,33 @@ static void se_task_entry(__async__, void *arg){
     this_arg->entry(__await__, this_arg->arg);
     int rc = sd_event_add_defer(this_arg->event, &this_arg->source, se_task_end_handler, this_arg);
     log_trace("task %d ended", this_arg->task_id);
+
+    struct memory_to_free *mem = this_arg->memory_to_free;
+    while(mem){
+        struct memory_to_free *next = mem->next;
+        mem->free_fn(mem->mem);
+        free(mem);
+        mem = next;
+    }
+
     if(rc < 0){
         log_error("task %d: sd_event_add_defer failed: %s", this_arg->task_id, strerror(-rc));
         abort();
     }
+}
+
+static struct se_task_arg* get_current_task_arg(__async__){
+    void *current_stack = s_task_get_current_stack(__await__);
+    return (struct se_task_arg *)(current_stack - offsetof(struct se_task_arg, stack));
+}
+
+void se_task_register_memory_to_free(__async__, void *mem, void (*free_fn)(void *)){
+    struct se_task_arg *this_arg = get_current_task_arg(__await__);
+    struct memory_to_free *new_mem = (struct memory_to_free *)malloc(sizeof(struct memory_to_free));
+    new_mem->mem = mem;
+    new_mem->free_fn = free_fn;
+    new_mem->next = this_arg->memory_to_free;
+    this_arg->memory_to_free = new_mem;
 }
 
 int se_task_create(sd_event *event, size_t stack_size, s_task_fn_t entry, void *arg){
@@ -107,6 +138,7 @@ int se_task_create(sd_event *event, size_t stack_size, s_task_fn_t entry, void *
     this_arg->event = sd_event_ref(event);
     this_arg->source = NULL;
     this_arg->task_id = g_task_seq++;
+    this_arg->memory_to_free = NULL;
     s_task_create(this_arg + 1 , stack_size, se_task_entry, this_arg);
     log_trace("task %d alloced and created", this_arg->task_id);
     return 0;
@@ -229,7 +261,7 @@ err_free_stream:
 err_out:
     return rc;
 }
-int destroy_msg_stream(struct msg_stream *stream){
+void destroy_msg_stream(struct msg_stream *stream){
     if(stream->source != NULL){
         sd_event_source_disable_unref(stream->source);
         stream->source = NULL;
@@ -240,7 +272,6 @@ int destroy_msg_stream(struct msg_stream *stream){
     }
     sd_event_unref(stream->event_loop);
     free(stream);
-    return 0;
 }
 
 static int io_timer_handler(sd_event_source *s, uint64_t usec, void *userdata){

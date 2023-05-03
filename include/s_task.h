@@ -89,6 +89,8 @@ int s_event_wait(__async__, s_event_t *event);
 
 void s_task_main_loop_once(void);
 
+void *s_task_get_current_stack(__async__);
+
 #ifdef __cplusplus
 }
 #endif

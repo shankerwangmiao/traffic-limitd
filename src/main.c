@@ -48,7 +48,8 @@ static void client_handler_async(__async__, void *arg){
         log_error("init_msg_stream failed: %s", strerror(-rc));
         goto err_close_fd;
     }
-    char *buf[256];
+    se_task_register_memory_to_free(__await__, stream, (void (*)(void *))destroy_msg_stream);
+    char buf[256];
     while(1){
         rc = msg_stream_read(__await__, stream, buf, sizeof(buf) - 1, 3*1000*1000);
         if(rc < 0){
@@ -73,7 +74,6 @@ static void client_handler_async(__async__, void *arg){
         log_trace("after 5 sec delay");
     }
 err_close_stream:
-    destroy_msg_stream(stream);
     return;
 err_close_fd:
     close(fd);

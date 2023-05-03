@@ -22,7 +22,7 @@ THREAD_LOCAL s_task_globals_t g_globals;
 /* tasks                                                           */
 /*******************************************************************/
 
-/* 
+/*
     *timeout, wait timeout
     return, true on task run
  */
@@ -43,7 +43,7 @@ static void s_task_call_next(__async__) {
 
     old_task = g_globals.current_task;
     next = s_list_get_next(&g_globals.active_tasks);
-    
+
     /* printf("next = %p %p\n", g_globals.current_task, next); */
 
     g_globals.current_task = GET_PARENT_ADDR(next, s_task_t, node);
@@ -81,13 +81,13 @@ static void s_task_call_next(__async__) {
             while(1);   /* dead */
         }
     }
-#endif    
+#endif
 }
 
 void s_task_next(__async__) {
     g_globals.current_task->waiting_cancelled = false;
     s_task_call_next(__await__);
-}  
+}
 
 void s_task_main_loop_once() {
     __async__ = 0;
@@ -234,4 +234,6 @@ void s_task_fcontext_entry(transfer_t arg) {
 }
 #endif
 
-
+void *s_task_get_current_stack(__async__) {
+    return g_globals.current_task;
+}
