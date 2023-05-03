@@ -79,6 +79,7 @@ struct se_task_arg{
     size_t task_id;
     void *arg;
     struct memory_to_free *memory_to_free;
+    void *interrupt_reason;
     uint8_t stack[];
 };
 
@@ -128,6 +129,16 @@ void se_task_register_memory_to_free(__async__, void *mem, void (*free_fn)(void 
     this_arg->memory_to_free = new_mem;
 }
 
+void *get_interrupt_reason(__async__){
+    struct se_task_arg *this_arg = get_current_task_arg(__await__);
+    return this_arg->interrupt_reason;
+}
+
+static void interrupt_task(struct se_task_arg *arg, void *reason){
+    arg->interrupt_reason = reason;
+    s_task_cancel_wait(&arg->stack);
+}
+
 int se_task_create(sd_event *event, size_t stack_size, s_task_fn_t entry, void *arg){
     struct se_task_arg *this_arg = (struct se_task_arg *)malloc(sizeof(struct se_task_arg) + stack_size);
     if(this_arg == NULL){
@@ -139,7 +150,8 @@ int se_task_create(sd_event *event, size_t stack_size, s_task_fn_t entry, void *
     this_arg->source = NULL;
     this_arg->task_id = g_task_seq++;
     this_arg->memory_to_free = NULL;
-    s_task_create(this_arg + 1 , stack_size, se_task_entry, this_arg);
+    this_arg->interrupt_reason = NULL;
+    s_task_create(&this_arg->stack , stack_size, se_task_entry, this_arg);
     log_trace("task %d alloced and created", this_arg->task_id);
     return 0;
 }
@@ -149,6 +161,10 @@ struct msg_stream {
     enum {NOOP, WRITE, READ, ERR, END} state;
     sd_event_source *source;
     sd_event_source *timer;
+    struct {
+        struct se_task_arg *target_task;
+        void *reason;
+    } interrupt;
     struct {
         void * buf;
         size_t len;
@@ -219,6 +235,11 @@ static int msg_stream_handler(sd_event_source *s, int fd, uint32_t revents, void
         }
         rc = sd_event_source_set_enabled(s, SD_EVENT_OFF);
         s_event_set(&this_stream->event);
+        if(this_stream->state != WRITE && this_stream->state != READ){
+            if(this_stream->interrupt.target_task){
+                interrupt_task(this_stream->interrupt.target_task, this_stream->interrupt.reason);
+            }
+        }
     }
     return 0;
 }
@@ -240,6 +261,8 @@ int init_msg_stream(struct msg_stream **stream, sd_event *event, int fd){
     this_stream->error = 0;
     this_stream->event_loop = sd_event_ref(event);
     this_stream->timer = NULL;
+    this_stream->interrupt.target_task = NULL;
+    this_stream->interrupt.reason = NULL;
 
     rc = sd_event_add_io(event, &this_stream->source, fd, 0, msg_stream_handler, this_stream);
     if(rc < 0){
@@ -288,6 +311,16 @@ static int io_timer_handler(sd_event_source *s, uint64_t usec, void *userdata){
     sd_event_source_disable_unref(this_stream->timer);
     this_stream->timer = NULL;
     return 0;
+}
+
+void msg_stream_reg_interrupt(__async__, struct msg_stream *stream, void *reason){
+    if(reason == NULL){
+        stream->interrupt.target_task = NULL;
+        stream->interrupt.reason = NULL;
+    }else{
+        stream->interrupt.target_task = get_current_task_arg(__await__);
+        stream->interrupt.reason = reason;
+    }
 }
 
 static ssize_t msg_stream_do_io(__async__, struct msg_stream *stream, void *buf, size_t size, uint64_t usec, int read_or_write){
