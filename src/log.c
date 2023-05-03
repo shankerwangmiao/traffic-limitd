@@ -66,6 +66,9 @@ static void stdout_callback(log_Event *ev) {
         buf, level_colors[ev->level], level_strings[ev->level],
         ev->file, ev->line);
   }
+  if(ev->task_id){
+    fprintf(ev->udata, "\x1b[90m[%lu]\x1b[0m ", ev->task_id);
+  }
   vfprintf(ev->udata, ev->fmt, ev->ap);
   fprintf(ev->udata, "\n");
   fflush(ev->udata);
@@ -144,12 +147,13 @@ static void init_event(log_Event *ev, void *udata) {
 }
 
 
-void log_log(int level, const char *file, int line, const char *fmt, ...) {
+void log_log(size_t task_id,int level, const char *file, int line, const char *fmt, ...) {
   log_Event ev = {
     .fmt   = fmt,
     .file  = file,
     .line  = line,
     .level = level,
+    .task_id = task_id,
   };
 
   lock();

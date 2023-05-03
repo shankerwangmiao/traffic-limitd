@@ -14,7 +14,7 @@ struct se_timer_arg{
     int error;
 };
 
-static size_t g_task_seq = 0;
+static size_t g_task_seq = 1;
 
 static int timer_handler(sd_event_source *s, uint64_t usec, void *userdata){
     struct se_timer_arg *arg = (struct se_timer_arg *)userdata;
@@ -38,16 +38,16 @@ int se_task_usleep(__async__, sd_event *event, uint64_t usec) {
     rc = sd_event_add_time_relative(
         event, &this_arg.source, CLOCK_MONOTONIC, usec, 0, timer_handler, &this_arg
     );
-    log_trace("timer added after %ld usec", usec);
+    alog_trace("timer added after %ld usec", usec);
     if(rc < 0){
-        log_error("sd_event_add_time_relative: %s", strerror(-rc));
+        alog_error("sd_event_add_time_relative: %s", strerror(-rc));
         return rc;
     }
 
     rc = s_event_wait(__await__, &this_arg.event);
 
     if(rc < 0){
-        log_info("timer interrupted");
+        alog_info("timer interrupted");
         rc = -EINTR;
         goto err_unref_src;
     }
@@ -56,7 +56,7 @@ int se_task_usleep(__async__, sd_event *event, uint64_t usec) {
         rc = this_arg.error;
     }
     if(rc < 0){
-        log_error("error returned from timer handler: %s", strerror(-rc));
+        alog_error("error returned from timer handler: %s", strerror(-rc));
         goto err_unref_src;
     }
 
@@ -99,7 +99,7 @@ static void se_task_entry(__async__, void *arg){
     struct se_task_arg *this_arg = (struct se_task_arg *)arg;
     this_arg->entry(__await__, this_arg->arg);
     int rc = sd_event_add_defer(this_arg->event, &this_arg->source, se_task_end_handler, this_arg);
-    log_trace("task %d ended", this_arg->task_id);
+    alog_trace("task %d ended", this_arg->task_id);
 
     struct memory_to_free *mem = this_arg->memory_to_free;
     while(mem){
@@ -110,7 +110,7 @@ static void se_task_entry(__async__, void *arg){
     }
 
     if(rc < 0){
-        log_error("task %d: sd_event_add_defer failed: %s", this_arg->task_id, strerror(-rc));
+        alog_error("task %d: sd_event_add_defer failed: %s", this_arg->task_id, strerror(-rc));
         abort();
     }
 }
@@ -132,6 +132,11 @@ void se_task_register_memory_to_free(__async__, void *mem, void (*free_fn)(void 
 void *get_interrupt_reason(__async__){
     struct se_task_arg *this_arg = get_current_task_arg(__await__);
     return this_arg->interrupt_reason;
+}
+
+size_t get_current_task_id(__async__){
+    struct se_task_arg *this_arg = get_current_task_arg(__await__);
+    return this_arg->task_id;
 }
 
 static void interrupt_task(struct se_task_arg *arg, void *reason){
@@ -345,28 +350,28 @@ static ssize_t msg_stream_do_io(__async__, struct msg_stream *stream, void *buf,
             stream->event_loop, &stream->timer, CLOCK_MONOTONIC, usec, 0, io_timer_handler, stream
         );
         if(rc < 0){
-            log_error("sd_event_add_time_relative: %s", strerror(-rc));
+            alog_error("sd_event_add_time_relative: %s", strerror(-rc));
             return rc;
         }
     }
 
     rc = sd_event_source_set_io_events(stream->source, read_or_write == READ ? EPOLLIN : EPOLLOUT);
     if(rc < 0){
-        log_error("sd_event_source_set_io_events: %s", strerror(-rc));
+        alog_error("sd_event_source_set_io_events: %s", strerror(-rc));
         return rc;
     }
 
     rc = s_event_wait(__await__, &stream->event);
 
     if(rc < 0){
-        log_info("wait interrupted");
+        alog_info("wait interrupted");
         if(stream->timer){
             sd_event_source_disable_unref(stream->timer);
             stream->timer = NULL;
         }
         rc = sd_event_source_set_io_events(stream->source, 0);
         if(rc < 0){
-            log_error("sd_event_source_set_io_events: %s", strerror(-rc));
+            alog_error("sd_event_source_set_io_events: %s", strerror(-rc));
         }
         stream->state = NOOP;
         return -EINTR;

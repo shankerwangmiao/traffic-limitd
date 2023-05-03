@@ -45,12 +45,12 @@ static void client_handler_async(__async__, void *arg){
     };
 
     int fd = (int)(size_t)arg;
-    log_trace("handle incoming connection: %d", fd);
+    alog_trace("handle incoming connection: %d", fd);
     int rc = 0;
     struct msg_stream *stream = NULL;
     rc = init_msg_stream(&stream, g_daemon.event_loop, fd);
     if(rc < 0){
-        log_error("init_msg_stream failed: %s", strerror(-rc));
+        alog_error("init_msg_stream failed: %s", strerror(-rc));
         goto err_close_fd;
     }
     se_task_register_memory_to_free(__await__, stream, (void (*)(void *))destroy_msg_stream);
@@ -62,30 +62,30 @@ static void client_handler_async(__async__, void *arg){
             if(rc == -EINTR){
                 goto interrupt;
             }
-            log_error("msg_stream_read failed: %s", strerror(-rc));
+            alog_error("msg_stream_read failed: %s", strerror(-rc));
             goto err_close_stream;
         }else if(rc == 0){
-            log_trace("read eof");
+            alog_trace("read eof");
             break;
         }
         int len = rc;
         buf[len++] = '\0';
-        log_trace("read %d bytes: %s", len, buf);
+        alog_trace("read %d bytes: %s", len, buf);
         rc = se_task_usleep(__await__, g_daemon.event_loop, 5*1000*1000);
         if(rc < 0){
             if(rc == -EINTR){
                 goto interrupt;
             }
-            log_error("se_task_usleep failed: %s", strerror(-rc));
+            alog_error("se_task_usleep failed: %s", strerror(-rc));
             goto err_close_stream;
         }
-        log_trace("after 5 sec delay");
+        alog_trace("after 5 sec delay");
         rc = msg_stream_write(__await__, stream, buf, len, 3*1000*1000);
         if(rc < 0){
             if(rc == -EINTR){
                 goto interrupt;
             }
-            log_error("msg_stream_write failed: %s", strerror(-rc));
+            alog_error("msg_stream_write failed: %s", strerror(-rc));
             goto err_close_stream;
         }
         rc = se_task_usleep(__await__, g_daemon.event_loop, 5*1000*1000);
@@ -93,10 +93,10 @@ static void client_handler_async(__async__, void *arg){
             if(rc == -EINTR){
                 goto interrupt;
             }
-            log_error("se_task_usleep failed: %s", strerror(-rc));
+            alog_error("se_task_usleep failed: %s", strerror(-rc));
             goto err_close_stream;
         }
-        log_trace("after 5 sec delay");
+        alog_trace("after 5 sec delay");
     }
 err_close_stream:
     return;
@@ -104,11 +104,11 @@ err_close_fd:
     close(fd);
     return;
 interrupt:
-    log_trace("interrupted");
+    alog_trace("interrupted");
     int reason = (size_t)get_interrupt_reason(__await__);
     switch (reason) {
     case INT_IO_ERR:
-        log_trace("io closed");
+        alog_trace("io closed");
         break;
     }
     return;
