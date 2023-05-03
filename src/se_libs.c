@@ -7,6 +7,7 @@
 #include <log.h>
 #include <string.h>
 #include <unistd.h>
+#include <s_list.h>
 
 struct se_timer_arg{
     s_event_t event;
@@ -15,6 +16,8 @@ struct se_timer_arg{
 };
 
 static size_t g_task_seq = 1;
+
+const struct global_interrupt_reasons global_interrupt_reasons;
 
 static int timer_handler(sd_event_source *s, uint64_t usec, void *userdata){
     struct se_timer_arg *arg = (struct se_timer_arg *)userdata;
@@ -27,6 +30,11 @@ static int timer_handler(sd_event_source *s, uint64_t usec, void *userdata){
     s_event_set(&arg->event);
     return 0;
 }
+
+static s_list_t all_tasks = {
+    .next = &all_tasks,
+    .prev = &all_tasks,
+};
 
 int se_task_usleep(__async__, sd_event *event, uint64_t usec) {
     struct se_timer_arg this_arg;
@@ -73,6 +81,7 @@ struct memory_to_free{
 };
 
 struct se_task_arg{
+    s_list_t list_node;
     s_task_fn_t entry;
     sd_event_source *source;
     sd_event *event;
@@ -86,6 +95,7 @@ struct se_task_arg{
 // Called on main stack
 static int se_task_end_handler(sd_event_source *s, void *userdata){
     struct se_task_arg *arg = (struct se_task_arg *)userdata;
+    s_list_detach(&arg->list_node);
     sd_event_source_disable_unref(arg->source);
     sd_event_unref(arg->event);
     int this_task_id = arg->task_id;
@@ -144,6 +154,19 @@ static void interrupt_task(struct se_task_arg *arg, void *reason){
     s_task_cancel_wait(&arg->stack);
 }
 
+void interrupt_all_tasks(void *reason){
+    s_list_t *node = all_tasks.next;
+    while(node != &all_tasks){
+        struct se_task_arg *arg = GET_PARENT_ADDR(node, struct se_task_arg, list_node);
+        node = node->next;
+        interrupt_task(arg, reason);
+    }
+}
+
+bool is_task_empty(void){
+    return s_list_is_empty(&all_tasks);
+}
+
 int se_task_create(sd_event *event, size_t stack_size, s_task_fn_t entry, void *arg){
     struct se_task_arg *this_arg = (struct se_task_arg *)malloc(sizeof(struct se_task_arg) + stack_size);
     if(this_arg == NULL){
@@ -156,6 +179,8 @@ int se_task_create(sd_event *event, size_t stack_size, s_task_fn_t entry, void *
     this_arg->task_id = g_task_seq++;
     this_arg->memory_to_free = NULL;
     this_arg->interrupt_reason = NULL;
+    s_list_init(&this_arg->list_node);
+    s_list_attach(&all_tasks, &this_arg->list_node);
     s_task_create(&this_arg->stack , stack_size, se_task_entry, this_arg);
     log_trace("task %d alloced and created", this_arg->task_id);
     return 0;

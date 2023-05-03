@@ -17,11 +17,17 @@ static const size_t STACK_SIZE = 256*1024;
 
 static struct daemon g_daemon = {0};
 
+static enum{
+    NOEXIT = 0,
+    EXIT_REQ_SENT = 1,
+    WAIT_TASKS = 2,
+} g_exit_req = NOEXIT;
+
 static int exit_req_handler(sd_event_source *s, const struct signalfd_siginfo *si, void *userdata){
     sd_event_source_disable_unref(s);
-    int rc = sd_event_exit(g_daemon.event_loop, 0);
-    if(rc < 0){
-         log_error("sd_event_exit failed: %s", strerror(-rc));
+    if(g_exit_req == NOEXIT){
+        g_exit_req = EXIT_REQ_SENT;
+        interrupt_all_tasks((void *)&global_interrupt_reasons.SYS_WILL_EXIT);
     }
     return 0;
 }
@@ -105,11 +111,14 @@ err_close_fd:
     return;
 interrupt:
     alog_trace("interrupted");
-    int reason = (size_t)get_interrupt_reason(__await__);
-    switch (reason) {
-    case INT_IO_ERR:
+    void *reason = get_interrupt_reason(__await__);
+    if((uintptr_t) reason == INT_IO_ERR){
         alog_trace("io closed");
-        break;
+    }else if(reason == &global_interrupt_reasons.SYS_WILL_EXIT){
+        alog_trace("system will exit");
+        if(stream){
+            msg_stream_write(__await__, stream, "Killed\n", 8, 3*1000*1000);
+        }
     }
     return;
 }
@@ -177,6 +186,14 @@ int main(int argc, char *argv[]) {
                 log_error("sd_event_run failed: %s", strerror(-rc));
                 return -1;
             }
+        }
+        if(g_exit_req == EXIT_REQ_SENT && is_task_empty()){
+            rc = sd_event_exit(g_daemon.event_loop, 0);
+            if(rc < 0){
+                log_error("sd_event_exit failed: %s", strerror(-rc));
+                return -1;
+            }
+            g_exit_req = WAIT_TASKS;
         }
     }
     log_info("all task is over");
