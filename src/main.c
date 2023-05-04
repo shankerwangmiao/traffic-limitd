@@ -79,6 +79,31 @@ static void client_handler_async(__async__, void *arg){
 
     const struct ucred *cred = msg_stream_get_peer_cred(stream);
     alog_info("Our peer pid=%d, uid=%d", cred->pid, cred->uid);
+    {
+        char *unit = NULL;
+        rc = sb_sd_GetUnitByPID(__await__, g_daemon.sd_bus, cred->pid, &unit);
+        if(rc < 0){
+            if(rc == -EINTR){
+                goto interrupt;
+            }
+            alog_error("sb_sd_GetUnitByPID failed: %s", strerror(-rc));
+            goto err_close_stream;
+        }
+        alog_info("Our peer unit name: %s", unit);
+        char *val = NULL;
+        rc = sb_sd_Unit_Get_Id(__await__, g_daemon.sd_bus, unit, &val);
+        if (rc < 0){
+            free(unit);
+            if(rc == -EINTR){
+                goto interrupt;
+            }
+            alog_error("sb_sd_Unit_Get_Id failed: %s", strerror(-rc));
+            goto err_close_stream;
+        }
+        alog_info("Our peer unit id: %s", val);
+        free(val);
+        free(unit);
+    }
 
     char buf[256];
     while(1){
