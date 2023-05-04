@@ -132,6 +132,9 @@ void s_task_create(void *stack, size_t stack_size, s_task_fn_t task_entry, void 
     task->stack_size = stack_size;
     task->closed = false;
     task->waiting_cancelled = false;
+#ifdef USE_DEAD_TASK_CHECKING
+    task->waiting_event = NULL;
+#endif
     s_list_attach(&g_globals.active_tasks, &task->node);
 
     real_stack = (void *)&task[1];
@@ -183,6 +186,13 @@ void s_task_cancel_wait(void* stack) {
     task->waiting_cancelled = true;
     s_list_detach(&task->node);
     s_list_attach(&g_globals.active_tasks, &task->node);
+#ifdef USE_DEAD_TASK_CHECKING
+    s_event_t *waiting_event = task->waiting_event;
+    g_globals.current_task->waiting_event = NULL;
+    if(waiting_event){
+        s_event_remove_from_waiting_list(waiting_event);
+    }
+#endif
 }
 
 unsigned int s_task_cancel_dead() {

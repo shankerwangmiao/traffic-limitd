@@ -24,6 +24,9 @@ typedef struct tag_s_task_t {
     s_event_t    join_event;
     s_task_fn_t  task_entry;
     void        *task_arg;
+#ifdef USE_DEAD_TASK_CHECKING
+    s_event_t   *waiting_event;
+#endif
 #if defined   USE_SWAP_CONTEXT
     ucontext_t   uc;
 #   ifdef __APPLE__
@@ -88,6 +91,7 @@ void s_task_next(__async__);
 
 /* Return: number of cancelled tasks */
 unsigned int s_task_cancel_dead(void);
+void s_event_remove_from_waiting_list(s_event_t *event);
 #ifdef USE_DEAD_TASK_CHECKING
 unsigned int s_event_cancel_dead_waiting_tasks_(void);
 #endif

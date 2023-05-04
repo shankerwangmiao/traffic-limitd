@@ -24,7 +24,7 @@ static void s_event_add_to_waiting_list(s_event_t *event) {
 }
 
 /* Remove the event from global waiting event list */
-static void s_event_remove_from_waiting_list(s_event_t *event) {
+void s_event_remove_from_waiting_list(s_event_t *event) {
 #ifdef USE_DEAD_TASK_CHECKING
     if(s_list_is_empty(&event->wait_list)) {
         s_list_detach(&event->self);
@@ -82,6 +82,9 @@ int s_event_wait(__async__, s_event_t *event) {
     s_event_add_to_waiting_list(event);
     s_list_detach(&g_globals.current_task->node);   /* no need, for safe */
     s_list_attach(&event->wait_list, &g_globals.current_task->node);
+#ifdef USE_DEAD_TASK_CHECKING
+    g_globals.current_task->waiting_event = event;
+#endif
     s_task_next(__await__);
     ret = (g_globals.current_task->waiting_cancelled ? -1 : 0);
     g_globals.current_task->waiting_cancelled = false;
@@ -92,5 +95,8 @@ int s_event_wait(__async__, s_event_t *event) {
 void s_event_set(s_event_t *event) {
     s_list_attach(&g_globals.active_tasks, &event->wait_list);
     s_list_detach(&event->wait_list);
+#ifdef USE_DEAD_TASK_CHECKING
+    g_globals.current_task->waiting_event = NULL;
+#endif
     s_event_remove_from_waiting_list(event);
 }
