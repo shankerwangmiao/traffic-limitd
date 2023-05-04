@@ -48,6 +48,8 @@ int sb_bus_call_unit_method(__async__, sd_bus *bus, const char *path, const char
 int sb_bus_get_property(__async__, sd_bus *bus, const struct bus_locator *locator, const char *member, sd_bus_message **reply, const char *type);
 int sb_bus_get_property_trivial(__async__, sd_bus *bus, const struct bus_locator *locator, const char *member, char type, void *ptr);
 int sb_bus_get_property_string(__async__, sd_bus *bus, const struct bus_locator *locator, const char *member, char **result);
+int sb_sd_Unit_Get_subprop(__async__, sd_bus *bus, const char *unit_obj, const char *member, sd_bus_message **reply, const char *type);
+int sb_Unit_Get_subprop_string(__async__, sd_bus *bus, const char *unit_obj, const char *member, char **result);
 
 #define DEF_SB_SD_UNIT_GET_STR_PROP(__type__, __name__) \
     static inline int sb_sd_##__type__##_Get_##__name__(__async__, sd_bus *bus, const char *unit_obj, char **result){ \

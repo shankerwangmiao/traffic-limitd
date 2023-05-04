@@ -102,6 +102,28 @@ static void client_handler_async(__async__, void *arg){
         }
         alog_info("Our peer unit id: %s", val);
         free(val);
+        rc = sb_Unit_Get_subprop_string(__await__, g_daemon.sd_bus, unit, "ControlGroup", &val);
+        if (rc < 0){
+            free(unit);
+            if(rc == -EINTR){
+                goto interrupt;
+            }
+            alog_error("sb_Unit_Get_subprop_string(ControlGroup) failed: %s", strerror(-rc));
+            goto err_close_stream;
+        }
+        alog_info("Our peer unit cgroup: %s", val);
+        free(val);
+        rc = sb_Unit_Get_subprop_string(__await__, g_daemon.sd_bus, unit, "Slice", &val);
+        if (rc < 0){
+            free(unit);
+            if(rc == -EINTR){
+                goto interrupt;
+            }
+            alog_error("sb_Unit_Get_subprop_string(Slice) failed: %s", strerror(-rc));
+            goto err_close_stream;
+        }
+        alog_info("Our peer unit slice: %s", val);
+        free(val);
         free(unit);
     }
 

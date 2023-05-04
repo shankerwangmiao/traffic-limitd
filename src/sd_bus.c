@@ -5,6 +5,8 @@
 #include <se_libs.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <ctype.h>
+#include <stdlib.h>
 
 const struct bus_locator * const bus_systemd_mgr = &(struct bus_locator){
     .destination = "org.freedesktop.systemd1",
@@ -209,6 +211,86 @@ int sb_bus_get_property_string(__async__, sd_bus *bus, const struct bus_locator 
     const char *prop_str;
     char *n;
     rc = sb_bus_get_property(__await__, bus, locator, member, &rep, "s");
+    if(rc < 0){
+        alog_error("sb_bus_get_property failed: %s", strerror(-rc));
+        goto fail;
+    }
+    rc = sd_bus_message_read_basic(rep, 's', &prop_str);
+    if(rc < 0){
+        alog_error("sd_bus_message_read_basic failed: %s", strerror(-rc));
+        goto err_unref_msg;
+    }
+    n = strdup(prop_str);
+    if(n == NULL){
+        rc = -errno;
+        alog_error("strdup failed: %s", strerror(-rc));
+        goto err_unref_msg;
+    }
+    *result = n;
+    rc = 0;
+err_unref_msg:
+    sd_bus_message_unref(rep);
+fail:
+    return rc;
+}
+
+#define SD_INTERFACE_NAME "org.freedesktop.systemd1."
+
+int sb_sd_Unit_Get_subprop(__async__, sd_bus *bus, const char *unit_obj, const char *member, sd_bus_message **reply, const char *type) {
+    int rc = 0;
+    char *unit_name = NULL;
+    rc = sb_sd_Unit_Get_Id(__await__, bus, unit_obj, &unit_name);
+    if(rc < 0){
+        alog_error("sb_sd_Unit_Get_Id failed: %s", strerror(-rc));
+        goto fail;
+    }
+    int len = strlen(unit_name);
+    if(len < 1){
+        rc = -EINVAL;
+        alog_error("unit_name is empty");
+        goto fail_free_unit_name;
+    }
+    char *kind = NULL;
+    for(int i = len - 1; i >= 0; i--){
+        if(unit_name[i] == '.'){
+            kind = unit_name + i + 1;
+            break;
+        }
+    }
+    if(kind == NULL || *kind == '\0'){
+        rc = -EINVAL;
+        alog_error("unit_name is invalid, cannot determine kind");
+        goto fail_free_unit_name;
+    }
+    kind[0]=toupper(kind[0]);
+    {
+        char interface_buf[sizeof(SD_INTERFACE_NAME) + len - (kind - unit_name) + 10];
+        sprintf(interface_buf, SD_INTERFACE_NAME "%s", kind);
+        const struct bus_locator locator = {
+            .destination = "org.freedesktop.systemd1",
+            .path = unit_obj,
+            .interface = interface_buf,
+        };
+        rc = sb_bus_get_property(__await__, bus, &locator, member, reply, type);
+        if(rc < 0){
+            alog_error("sb_bus_get_property failed: %s", strerror(-rc));
+            goto fail_free_unit_name;
+        }
+        rc = 0;
+    }
+
+fail_free_unit_name:
+    free(unit_name);
+fail:
+    return rc;
+}
+
+int sb_Unit_Get_subprop_string(__async__, sd_bus *bus, const char *unit_obj, const char *member, char **result) {
+    int rc = 0;
+    sd_bus_message *rep = NULL;
+    const char *prop_str;
+    char *n;
+    rc = sb_sd_Unit_Get_subprop(__await__, bus, unit_obj, member, &rep, "s");
     if(rc < 0){
         alog_error("sb_bus_get_property failed: %s", strerror(-rc));
         goto fail;
