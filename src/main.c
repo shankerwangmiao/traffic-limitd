@@ -65,7 +65,7 @@ static void client_handler_async(__async__, void *arg){
         INT_IO_ERR = 1,
     };
 
-    int fd = (int)(size_t)arg;
+    int fd = (int)(uintptr_t)arg;
     alog_trace("handle incoming connection: %d", fd);
     int rc = 0;
     struct msg_stream *stream = NULL;
@@ -139,7 +139,7 @@ interrupt:
 }
 
 static void client_handler(int fd){
-    se_task_create(g_daemon.event_loop, STACK_SIZE, client_handler_async, (void *)(size_t)fd);
+    se_task_create(g_daemon.event_loop, STACK_SIZE, client_handler_async, (void *)(uintptr_t)fd);
 }
 
 int main(int argc, char *argv[]) {
@@ -176,6 +176,12 @@ int main(int argc, char *argv[]) {
     rc = sd_event_add_signal(g_daemon.event_loop, NULL, SIGTERM, exit_req_handler, NULL);
     if(rc < 0){
         log_error("add signal failed: %s", strerror(-rc));
+        return -1;
+    }
+
+    rc = initialize_sd_bus(&g_daemon);
+    if(rc < 0){
+        log_error("initialize_sd_bus failed: %s", strerror(-rc));
         return -1;
     }
 
@@ -257,6 +263,9 @@ int main(int argc, char *argv[]) {
         }
     }
     log_info("all task is over");
+    if(g_daemon.sd_bus){
+        sd_bus_unref(g_daemon.sd_bus);
+    }
     if(g_daemon.server_unix_sock_event_source){
         sd_event_source_disable_unref(g_daemon.server_unix_sock_event_source);
     }

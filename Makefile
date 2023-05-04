@@ -6,7 +6,7 @@ S_TASK_ASM_SRC = \
 	s_task/jump_gas.S \
 	s_task/make_gas.S
 
-SRC = src/main.c src/se_libs.c src/log.c src/unix_sock.c
+SRC = src/main.c src/se_libs.c src/log.c src/unix_sock.c src/sd_bus.c
 
 OBJ_DIR = objs
 
