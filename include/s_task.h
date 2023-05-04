@@ -45,8 +45,6 @@ typedef struct {
 #endif
 } s_event_t;
 
-#include "s_task_internal.h"
-
 
 
 /* Initialize the task system. */

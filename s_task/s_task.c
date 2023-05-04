@@ -5,8 +5,9 @@
 #include <stdint.h>
 #include <string.h>
 #include <limits.h>
-#include "s_task.h"
-#include "s_list.h"
+#include <s_task.h>
+#include "s_task_internal.h"
+#include <s_list.h>
 
 #define S_TASK_STACK_MAGIC ((int)0x5AA55AA5)
 THREAD_LOCAL s_task_globals_t g_globals;

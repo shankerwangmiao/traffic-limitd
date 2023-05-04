@@ -1,4 +1,5 @@
 #include "s_task.h"
+#include "s_task_internal.h"
 
 /*******************************************************************/
 /* event                                                           */
@@ -44,17 +45,17 @@ unsigned int s_event_cancel_dead_waiting_tasks_() {
         s_list_t *next_task;
         s_list_t *this_task;
         s_event_t *event;
-        
+
         next_event = s_list_get_next(this_event);
         s_list_detach(this_event);
         event = GET_PARENT_ADDR(this_event, s_event_t, self);
-        
+
         /* Check all tasks blocked on this event */
         for(this_task = s_list_get_next(&event->wait_list);
             this_task != &event->wait_list;
             this_task = next_task) {
             next_task = s_list_get_next(this_task);
-                    
+
             s_task_t *task = GET_PARENT_ADDR(this_task, s_task_t, node);
             s_task_cancel_wait(task);
             ++ret;
