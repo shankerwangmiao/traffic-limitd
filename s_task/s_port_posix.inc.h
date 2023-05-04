@@ -33,4 +33,3 @@ void create_fcontext(fcontext_t *fc, void *stack, size_t stack_size, void (* fn)
     *fc = make_fcontext(stack, stack_size, fn);
 }
 #endif
-
