@@ -11,11 +11,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "daemon.h"
+#include <time.h>
 
 
 static const size_t STACK_SIZE = 256*1024;
 
 static struct daemon g_daemon = {0};
+
+static const int NO_JOB_SLEEP_DELAY = 20 * 1000 * 1000;
 
 static enum{
     NOEXIT = 0,
@@ -28,6 +31,18 @@ static int exit_req_handler(sd_event_source *s, const struct signalfd_siginfo *s
     if(g_exit_req == NOEXIT){
         g_exit_req = EXIT_REQ_SENT;
         interrupt_all_tasks((void *)&global_interrupt_reasons.SYS_WILL_EXIT);
+    }
+    return 0;
+}
+
+static int sleep_timer_handler(sd_event_source *s, uint64_t usec, void *userdata){
+    if(is_task_empty()){
+        log_trace("No job, exit daemon");
+        int rc = sd_event_exit(g_daemon.event_loop, 0);
+        if(rc < 0){
+            log_error("sd_event_exit failed: %s", strerror(-rc));
+            /* Ignored */
+        }
     }
     return 0;
 }
@@ -134,8 +149,6 @@ int main(int argc, char *argv[]) {
         log_set_systemd(true);
     }
 
-    g_daemon.server_path = "/run/net_limiter_server.sock";
-
     s_task_init_system();
 
     log_trace("init_sys");
@@ -174,6 +187,18 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    sd_event_source *sleep_timer = NULL;
+    rc = sd_event_add_time_relative(g_daemon.event_loop, &sleep_timer, CLOCK_MONOTONIC, NO_JOB_SLEEP_DELAY, 0, sleep_timer_handler, NULL);
+    if(rc < 0){
+        log_error("add time event failed: %s", strerror(-rc));
+        return -1;
+    }
+    rc = sd_event_source_set_enabled(sleep_timer, SD_EVENT_OFF);
+    if(rc < 0){
+        log_error("set time event disabled failed: %s", strerror(-rc));
+        return -1;
+    }
+
     log_trace("main_create");
 
     while(1){
@@ -194,11 +219,49 @@ int main(int argc, char *argv[]) {
                 return -1;
             }
             g_exit_req = WAIT_TASKS;
+        }else if(is_task_empty()){
+            int timer_enabled;
+            rc = sd_event_source_get_enabled(sleep_timer, &timer_enabled);
+            if(rc < 0){
+                log_error("get time event enabled failed: %s", strerror(-rc));
+                return -1;
+            }
+            if (timer_enabled == SD_EVENT_OFF){
+                log_trace("No tasks, enable timer");
+                rc = sd_event_source_set_time_relative(sleep_timer, NO_JOB_SLEEP_DELAY);
+                if(rc < 0){
+                    log_error("set time event failed: %s", strerror(-rc));
+                    return -1;
+                }
+                rc = sd_event_source_set_enabled(sleep_timer, SD_EVENT_ONESHOT);
+                if(rc < 0){
+                    log_error("set time event enabled failed: %s", strerror(-rc));
+                    return -1;
+                }
+            }
+        }else{
+            int timer_enabled;
+            rc = sd_event_source_get_enabled(sleep_timer, &timer_enabled);
+            if(rc < 0){
+                log_error("get time event enabled failed: %s", strerror(-rc));
+                return -1;
+            }
+            if(timer_enabled != SD_EVENT_OFF){
+                log_trace("tasks coming, disable timer");
+                rc = sd_event_source_set_enabled(sleep_timer, SD_EVENT_OFF);
+                if(rc < 0){
+                    log_error("set time event disabled failed: %s", strerror(-rc));
+                    return -1;
+                }
+            }
         }
     }
     log_info("all task is over");
     if(g_daemon.server_unix_sock_event_source){
-        sd_event_source_disable_unrefp(&g_daemon.server_unix_sock_event_source);
+        sd_event_source_disable_unref(g_daemon.server_unix_sock_event_source);
+    }
+    if(sleep_timer){
+        sd_event_source_disable_unref(sleep_timer);
     }
     sd_event_unrefp(&g_daemon.event_loop);
     return 0;

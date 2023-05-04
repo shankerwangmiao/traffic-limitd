@@ -7,11 +7,12 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <systemd/sd-daemon.h>
+#include <fcntl.h>
 #include "daemon.h"
 
 struct listen_handler_arg {
     struct daemon *daemon;
-    const char *server_path;
     void (*handler)(int fd);
 };
 
@@ -35,13 +36,6 @@ static int unix_server_listen_handler(sd_event_source *s, int fd, uint32_t reven
 }
 
 static void unix_server_listen_destroy_handler(void *userdata){
-    int rc = 0;
-    struct listen_handler_arg *arg = (struct listen_handler_arg *)userdata;
-    rc = unlink(arg->server_path);
-    if(rc < 0){
-        log_error("unlink(%s) failed: %s (ignored)", arg->server_path, strerror(errno));
-    }
-    free((void *)arg->server_path);
     free(userdata);
 }
 
@@ -52,36 +46,36 @@ int setup_unix_listening_socket(struct daemon *daemon, void (*handler)(int fd)){
     int destroy_handler_armed = 0;
     int fd_owned = 0;
 
-    fd = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-    if(fd < 0){
-        log_error("socket() failed: %s", strerror(errno));
-        return -errno;
+    if(sd_listen_fds(0) < 1){
+        log_error("No listening sockets passed to us by systemd");
+        rc = -EINVAL;
+        return rc;
     }
+
+    fd = SD_LISTEN_FDS_START + 0;
+    if(!sd_is_socket(fd, AF_UNIX, SOCK_SEQPACKET, 1)){
+        log_error("File descriptor %d is not a UNIX SEQPACKET listening socket", fd);
+        rc = -EINVAL;
+        return rc;
+    }
+
     {
-        int yes = 1;
-        rc = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-        if(rc < 0){
-            log_error("setsockopt(SOL_SOCKET, SO_REUSEADDR) failed: %s", strerror(errno));
+        int flags = fcntl(fd, F_GETFL);
+        if(flags == -1){
+            log_error("fcntl(F_GETFL) failed: %s", strerror(errno));
             rc = -errno;
-            goto err_close_fd;
+            return rc;
         }
-    }
-    struct sockaddr_un addr;
-    addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, daemon->server_path, sizeof(addr.sun_path) - 1);
-
-    rc = bind(fd, (struct sockaddr *)&addr, sizeof(addr));
-    if(rc < 0){
-        log_error("bind() failed: %s", strerror(errno));
-        rc = -errno;
-        goto err_close_fd;
-    }
-
-    rc = listen(fd, SOMAXCONN);
-    if(rc < 0){
-        log_error("listen() failed: %s", strerror(errno));
-        rc = -errno;
-        goto err_close_fd;
+        if(!(flags & O_NONBLOCK)){
+            log_warn("Listening socket is not non-blocking, setting O_NONBLOCK");
+            flags |= O_NONBLOCK;
+            rc = fcntl(fd, F_SETFL, flags);
+            if(rc == -1){
+                log_error("fcntl(F_SETFL) failed: %s", strerror(errno));
+                rc = -errno;
+                return rc;
+            }
+        }
     }
 
     struct listen_handler_arg *arg = malloc(sizeof(*arg));
@@ -93,13 +87,6 @@ int setup_unix_listening_socket(struct daemon *daemon, void (*handler)(int fd)){
 
     arg->daemon = daemon;
     arg->handler = handler;
-    arg->server_path = strdup(addr.sun_path);
-
-    if(arg->server_path == NULL){
-        log_error("strdup() failed: %s", strerror(errno));
-        rc = -errno;
-        goto err_free_mem;
-    }
 
     rc = sd_event_add_io(
         daemon->event_loop, &daemon->server_unix_sock_event_source, fd, EPOLLIN, unix_server_listen_handler, arg
@@ -107,7 +94,7 @@ int setup_unix_listening_socket(struct daemon *daemon, void (*handler)(int fd)){
 
     if(rc < 0){
         log_error("sd_event_add_io() failed: %s", strerror(-rc));
-        goto err_free_str;
+        goto err_free_mem;
     }
 
     rc = sd_event_source_set_io_fd_own(daemon->server_unix_sock_event_source, true);
@@ -133,11 +120,6 @@ int setup_unix_listening_socket(struct daemon *daemon, void (*handler)(int fd)){
 
 err_unref_src:
     sd_event_source_disable_unrefp(&daemon->server_unix_sock_event_source);
-
-err_free_str:
-    if(!destroy_handler_armed){
-        free((void *)arg->server_path);
-    }
 
 err_free_mem:
     if(!destroy_handler_armed){
