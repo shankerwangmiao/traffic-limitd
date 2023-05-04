@@ -3,6 +3,7 @@
 
 #include <systemd/sd-event.h>
 #include <s_task.h>
+#include <sys/socket.h>
 
 struct msg_stream;
 
@@ -20,6 +21,7 @@ void destroy_msg_stream(struct msg_stream *stream);
 void msg_stream_reg_interrupt(__async__, struct msg_stream *stream, void *reason);
 ssize_t msg_stream_read(__async__, struct msg_stream *stream, void *buf, size_t size, uint64_t usec);
 ssize_t msg_stream_write(__async__, struct msg_stream *stream, const void *buf, size_t size, uint64_t usec);
+const struct ucred *msg_stream_get_peer_cred(const struct msg_stream *stream);
 
 enum {
     MSG_STREAM_ERROR = 1,

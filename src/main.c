@@ -1,5 +1,4 @@
-/* Copyright xhawk, MIT license */
-
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <systemd/sd-event.h>
 #include <s_task.h>
@@ -12,6 +11,7 @@
 #include <unistd.h>
 #include "daemon.h"
 #include <time.h>
+#include <sys/socket.h>
 
 
 static const size_t STACK_SIZE = 256*1024;
@@ -76,6 +76,10 @@ static void client_handler_async(__async__, void *arg){
     }
     se_task_register_memory_to_free(__await__, stream, (void (*)(void *))destroy_msg_stream);
     msg_stream_reg_interrupt(__await__, stream, (void *)INT_IO_ERR);
+
+    const struct ucred *cred = msg_stream_get_peer_cred(stream);
+    alog_info("Our peer pid=%d, uid=%d", cred->pid, cred->uid);
+
     char buf[256];
     while(1){
         rc = msg_stream_read(__await__, stream, buf, sizeof(buf) - 1, 3*1000*1000);

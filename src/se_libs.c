@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <systemd/sd-event.h>
 #include <s_task.h>
 #include <time.h>
@@ -8,6 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <s_list.h>
+#include <sys/socket.h>
 
 struct se_timer_arg{
     s_event_t event;
@@ -191,6 +193,7 @@ struct msg_stream {
     enum {NOOP, WRITE, READ, ERR, END} state;
     sd_event_source *source;
     sd_event_source *timer;
+    struct ucred cred;
     struct {
         struct se_task_arg *target_task;
         void *reason;
@@ -294,6 +297,22 @@ int init_msg_stream(struct msg_stream **stream, sd_event *event, int fd){
     this_stream->interrupt.target_task = NULL;
     this_stream->interrupt.reason = NULL;
 
+    {
+        socklen_t len = sizeof(this_stream->cred);
+        rc = getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &this_stream->cred, &len);
+
+        if(rc < 0){
+            log_error("getsockopt(SO_PEERCRED): %s", strerror(errno));
+            goto err_free_stream;
+        }
+
+        if(len != sizeof(this_stream->cred)){
+            log_error("getsockopt(SO_PEERCRED): unexpected return length");
+            rc = -EIO;
+            goto err_free_stream;
+        }
+    }
+
     rc = sd_event_add_io(event, &this_stream->source, fd, 0, msg_stream_handler, this_stream);
     if(rc < 0){
         log_error("sd_event_add_io: %s", strerror(-rc));
@@ -325,6 +344,10 @@ void destroy_msg_stream(struct msg_stream *stream){
     }
     sd_event_unref(stream->event_loop);
     free(stream);
+}
+
+const struct ucred *msg_stream_get_peer_cred(const struct msg_stream *stream){
+    return &stream->cred;
 }
 
 static int io_timer_handler(sd_event_source *s, uint64_t usec, void *userdata){
