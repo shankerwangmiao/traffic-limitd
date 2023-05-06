@@ -58,13 +58,13 @@ static void stdout_callback(log_Event *ev) {
   char buf[16];
 
   if(L.systemd){
-    fprintf(ev->udata, "%s%s:%d: ", level_systemd_strings[ev->level], ev->file, ev->line);
+    fprintf(ev->udata, "%s%s(%s:%d): ", level_systemd_strings[ev->level], ev->func, ev->file, ev->line);
   }else{
     buf[strftime(buf, sizeof(buf), "%H:%M:%S", ev->time)] = '\0';
     fprintf(
-        ev->udata, "%s %s%-5s\x1b[0m \x1b[90m%s:%d:\x1b[0m ",
+        ev->udata, "%s %s%-5s\x1b[0m \x1b[90m%s(%s:%d):\x1b[0m ",
         buf, level_colors[ev->level], level_strings[ev->level],
-        ev->file, ev->line);
+        ev->func, ev->file, ev->line);
   }
   if(ev->task_id){
     fprintf(ev->udata, "\x1b[90m[%lu]\x1b[0m ", ev->task_id);
@@ -147,11 +147,12 @@ static void init_event(log_Event *ev, void *udata) {
 }
 
 
-void log_log(size_t task_id,int level, const char *file, int line, const char *fmt, ...) {
+void log_log(size_t task_id,int level, const char *func, const char *file, int line, const char *fmt, ...) {
   log_Event ev = {
     .fmt   = fmt,
     .file  = file,
     .line  = line,
+    .func  = func,
     .level = level,
     .task_id = task_id,
   };
