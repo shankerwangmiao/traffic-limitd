@@ -79,53 +79,34 @@ static void client_handler_async(__async__, void *arg){
 
     const struct ucred *cred = msg_stream_get_peer_cred(stream);
     alog_info("Our peer pid=%d, uid=%d", cred->pid, cred->uid);
-    {
-        char *unit = NULL;
-        rc = sb_sd_GetUnitByPID(__await__, g_daemon.sd_bus, cred->pid, &unit);
-        if(rc < 0){
-            if(rc == -EINTR){
-                goto interrupt;
-            }
-            alog_error("sb_sd_GetUnitByPID failed: %s", strerror(-rc));
-            goto err_close_stream;
+
+    char *scope_obj = NULL;
+    char *scope_name = NULL;
+    rc = start_transient_scope(__await__, g_daemon.sd_bus, cred->pid, &scope_name, &scope_obj);
+    if(rc < 0){
+        if(rc == -EINTR){
+            goto interrupt;
         }
-        alog_info("Our peer unit name: %s", unit);
-        char *val = NULL;
-        rc = sb_sd_Unit_Get_Id(__await__, g_daemon.sd_bus, unit, &val);
-        if (rc < 0){
-            free(unit);
-            if(rc == -EINTR){
-                goto interrupt;
-            }
-            alog_error("sb_sd_Unit_Get_Id failed: %s", strerror(-rc));
-            goto err_close_stream;
-        }
-        alog_info("Our peer unit id: %s", val);
-        free(val);
-        rc = sb_Unit_Get_subprop_string(__await__, g_daemon.sd_bus, unit, "ControlGroup", &val);
-        if (rc < 0){
-            free(unit);
-            if(rc == -EINTR){
-                goto interrupt;
-            }
-            alog_error("sb_Unit_Get_subprop_string(ControlGroup) failed: %s", strerror(-rc));
-            goto err_close_stream;
-        }
-        alog_info("Our peer unit cgroup: %s", val);
-        free(val);
-        rc = sb_Unit_Get_subprop_string(__await__, g_daemon.sd_bus, unit, "Slice", &val);
-        if (rc < 0){
-            free(unit);
-            if(rc == -EINTR){
-                goto interrupt;
-            }
-            alog_error("sb_Unit_Get_subprop_string(Slice) failed: %s", strerror(-rc));
-            goto err_close_stream;
-        }
-        alog_info("Our peer unit slice: %s", val);
-        free(val);
-        free(unit);
+        alog_error("start_transient_scope failed: %s", strerror(-rc));
+        goto err_close_stream;
     }
+    se_task_register_memory_to_free(__await__, scope_name, free);
+    se_task_register_memory_to_free(__await__, scope_obj, free);
+
+    alog_trace("scope_name=%s, scope_obj=%s", scope_name, scope_obj);
+
+    char *cgroup_path = NULL;
+    rc = sb_Unit_Get_subprop_string(__await__, g_daemon.sd_bus, scope_obj, "ControlGroup", &cgroup_path);
+    if(rc < 0){
+        if(rc == -EINTR){
+            goto interrupt;
+        }
+        alog_error("sb_Unit_Get_subprop_string(scope, ControlGroup) failed: %s", strerror(-rc));
+        goto err_close_stream;
+    }
+    se_task_register_memory_to_free(__await__, cgroup_path, free);
+
+    alog_trace("cgroup_path=%s", cgroup_path);
 
     char buf[256];
     while(1){

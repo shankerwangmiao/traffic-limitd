@@ -51,6 +51,22 @@ int sb_bus_get_property_string(__async__, sd_bus *bus, const struct bus_locator 
 int sb_sd_Unit_Get_subprop(__async__, sd_bus *bus, const char *unit_obj, const char *member, sd_bus_message **reply, const char *type);
 int sb_Unit_Get_subprop_string(__async__, sd_bus *bus, const char *unit_obj, const char *member, char **result);
 
+struct sb_sd_wait_for_job_arg {
+    s_event_t event;
+    sd_bus *bus;
+    sd_bus_slot *slot_job_removed;
+    sd_bus_slot *slot_disconnected;
+    const char * job_obj;
+    char *result;
+    int rc;
+    int closed;
+};
+int sb_sd_init_wait_for_job(__async__, sd_bus *bus, struct sb_sd_wait_for_job_arg *arg);
+void sb_sd_free_wait_for_job(struct sb_sd_wait_for_job_arg *arg);
+int sb_sd_wait_for_job(__async__, struct sb_sd_wait_for_job_arg *arg, const char * const job_obj, char **result);
+
+int start_transient_scope(__async__, sd_bus *bus, pid_t pid, char **out_scope_name, char **out_scope_obj);
+
 #define DEF_SB_SD_UNIT_GET_STR_PROP(__type__, __name__) \
     static inline int sb_sd_##__type__##_Get_##__name__(__async__, sd_bus *bus, const char *unit_obj, char **result){ \
         return sb_bus_get_property_string(__await__, bus, &(struct bus_locator){ \
