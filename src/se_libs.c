@@ -370,6 +370,41 @@ void destroy_msg_stream(struct msg_stream *stream){
     free(stream);
 }
 
+int shutdown_msg_stream(__async__, struct msg_stream *stream){
+    int rc = 0;
+    rc = msg_stream_write(__await__, stream, NULL, 0, 0);
+    if(rc < 0){
+        log_error("msg_stream_write: %s", strerror(-rc));
+        return rc;
+    }
+    rc = sd_event_source_set_enabled(stream->source, SD_EVENT_OFF);
+    if(rc < 0){
+        log_error("sd_event_source_set_enabled: %s", strerror(-rc));
+        return rc;
+    }
+    sd_event_source_disable_unref(stream->timer);
+    stream->timer = NULL;
+    rc = sd_event_source_get_io_fd(stream->source);
+    if(rc < 0){
+        log_error("sd_event_source_get_io_fd: %s", strerror(-rc));
+        return rc;
+    }
+    int fd = rc;
+    rc = shutdown(fd, SHUT_RDWR);
+    if(rc < 0){
+        log_error("shutdown socket: %s", strerror(errno));
+        rc = -errno;
+        return rc;
+    }
+    sd_event_source_disable_unref(stream->source);
+    stream->source = NULL;
+    if(stream->state != ERR){
+        stream->state = END;
+        stream->error = 0;
+    }
+    return 0;
+}
+
 const struct ucred *msg_stream_get_peer_cred(const struct msg_stream *stream){
     return &stream->cred;
 }
