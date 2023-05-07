@@ -216,7 +216,11 @@ static int msg_stream_handler(sd_event_source *s, int fd, uint32_t revents, void
     }
     if(revents & EPOLLIN){
         if(this_stream->state == READ){
-            rc = read(fd, this_stream->io_buf.buf, this_stream->io_buf.len);
+            if(this_stream->io_buf.len){
+                rc = read(fd, this_stream->io_buf.buf, this_stream->io_buf.len);
+            }else{
+                rc = 0;
+            }
             if(rc < 0){
                 if(errno == EAGAIN){
                     return 0;
@@ -238,7 +242,11 @@ static int msg_stream_handler(sd_event_source *s, int fd, uint32_t revents, void
         }
     }else if(revents & EPOLLOUT){
         if(this_stream->state == WRITE){
-            rc = write(fd, this_stream->io_buf.buf, this_stream->io_buf.len);
+            if(this_stream->io_buf.len){
+                rc = write(fd, this_stream->io_buf.buf, this_stream->io_buf.len);
+            }else{
+                rc = 0;
+            }
             if(rc < 0){
                 if(errno == EAGAIN){
                     return 0;
