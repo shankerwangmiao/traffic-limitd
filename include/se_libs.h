@@ -16,6 +16,7 @@ void interrupt_all_tasks(void *reason);
 bool is_task_empty(void);
 void *get_interrupt_reason(__async__);
 size_t get_current_task_id(__async__);
+void set_interrupt_disabled(__async__, int disabled);
 extern const struct global_interrupt_reasons{
     uint8_t SYS_WILL_EXIT;
 } global_interrupt_reasons;
@@ -30,6 +31,12 @@ ssize_t msg_stream_read(__async__, struct msg_stream *stream, void *buf, size_t 
 ssize_t msg_stream_write(__async__, struct msg_stream *stream, const void *buf, size_t size, uint64_t usec);
 const struct ucred *msg_stream_get_peer_cred(const struct msg_stream *stream);
 
+/* pidfd event*/
+struct pidfd_event;
+int init_pidfd_event(struct pidfd_event **pid_event, sd_event *event, pid_t pid);
+void destroy_pidfd_event(struct pidfd_event *pid_event);
+void pidfd_event_reg_interrupt(__async__, struct pidfd_event *event, void *reason);
+int pidfd_event_wait_for_exit(__async__, struct pidfd_event *event);
 
 /* sd_bus */
 /* sb is short for S_event systemd-Bus*/

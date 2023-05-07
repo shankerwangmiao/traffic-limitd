@@ -79,7 +79,12 @@ int sb_bus_call(__async__, sd_bus *bus, sd_bus_message *m, sd_bus_message **resu
         rc = arg.error;
         goto err_free_slot;
     }
-    *result = arg.result;
+    if(result){
+        *result = arg.result;
+    }else{
+        sd_bus_message_unref(arg.result);
+        arg.result = NULL;
+    }
     rc = 0;
 
 err_free_slot:

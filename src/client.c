@@ -55,6 +55,7 @@ static struct option const long_options[] =
     {"bit-rate", required_argument, NULL, 'b'},
     {"wait", required_argument, NULL, 'w'},
     {"control-socket", required_argument, NULL, 'c'},
+    {"fork", no_argument, NULL, 'f'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}
 };
@@ -145,6 +146,7 @@ int main(int argc, char *argv[]){
     };
 
     int opt;
+    int debug_fork = 0;
 
     if(argc == 1){
         usage(0);
@@ -179,6 +181,9 @@ int main(int argc, char *argv[]){
                 usage(0);
                 return 0;
                 break;
+            case 'f':
+                debug_fork = 1;
+                break;
             default:
                 usage(1);
                 return 1;
@@ -209,6 +214,30 @@ int main(int argc, char *argv[]){
     if(rc < 0){
         perror("unable to connect to control socket");
         return 1;
+    }
+    if(debug_fork){
+        sleep(1);
+        rc = fork();
+        if(rc < 0){
+            perror("unable to fork");
+            return 1;
+        }else if(rc == 0){
+            rc = fork();
+            if(rc < 0){
+                perror("unable to fork");
+                return 1;
+            }else if (rc == 0){
+                setsid();
+                int i = 0;
+                while(1){
+                    fprintf(stderr, "child %d\n", i++);
+                    sleep(1);
+                }
+                return 0;
+            }else{
+                return 0;
+            }
+        }
     }
     char send_buf[sizeof(struct rate_limit_msg) + sizeof(struct rate_limit_req_attr)];
     struct rate_limit_msg *req_msg = (struct rate_limit_msg *)send_buf;

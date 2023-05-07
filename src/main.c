@@ -63,6 +63,7 @@ static int install_signals(void){
 static void client_handler_async(__async__, void *arg){
     enum {
         INT_IO_ERR = 1,
+        INT_PROC_END = 2,
     };
 
     int fd = (int)(uintptr_t)arg;
@@ -94,6 +95,15 @@ static void client_handler_async(__async__, void *arg){
     se_task_register_memory_to_free(__await__, scope_obj, free);
 
     alog_trace("scope_name=%s, scope_obj=%s", scope_name, scope_obj);
+
+    struct pidfd_event *pidfd_event = NULL;
+    rc = init_pidfd_event(&pidfd_event, g_daemon.event_loop, cred->pid);
+    if(rc < 0){
+        alog_error("init_pidfd_event failed: %s", strerror(-rc));
+        goto err_close_stream;
+    }
+    se_task_register_memory_to_free(__await__, pidfd_event, (void (*)(void *))destroy_pidfd_event);
+    pidfd_event_reg_interrupt(__await__, pidfd_event, (void *)INT_PROC_END);
 
     char *cgroup_path = NULL;
     rc = sb_Unit_Get_subprop_string(__await__, g_daemon.sd_bus, scope_obj, "ControlGroup", &cgroup_path);
@@ -157,14 +167,25 @@ err_close_fd:
     close(fd);
     return;
 interrupt:
-    alog_trace("interrupted");
+    alog_trace("interrupted, because:");
+    set_interrupt_disabled(__await__, 1);
     void *reason = get_interrupt_reason(__await__);
     if((uintptr_t) reason == INT_IO_ERR){
-        alog_trace("io closed");
+        alog_trace("    io closed");
     }else if(reason == &global_interrupt_reasons.SYS_WILL_EXIT){
-        alog_trace("system will exit");
+        alog_trace("    system will exit");
         if(stream){
             msg_stream_write(__await__, stream, "Killed\n", 8, 3*1000*1000);
+        }
+    }else if((uintptr_t)reason == INT_PROC_END){
+        alog_trace("    process ended");
+    }
+    if(scope_obj){
+        rc = sb_bus_call_unit_method(__await__, g_daemon.sd_bus, scope_obj, "Kill", NULL, "si", "all", SIGKILL);
+        if(rc < 0){
+            alog_error("kill scope failed: %s", strerror(-rc));
+        }else{
+            alog_trace("kill scope success");
         }
     }
     return;

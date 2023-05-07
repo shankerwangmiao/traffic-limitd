@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <s_list.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/syscall.h>
 
 struct se_timer_arg{
     s_event_t event;
@@ -90,6 +92,7 @@ struct se_task_arg{
     size_t task_id;
     void *arg;
     struct memory_to_free *memory_to_free;
+    int interrupt_disabled;
     void *interrupt_reason;
     uint8_t stack[];
 };
@@ -135,6 +138,10 @@ static struct se_task_arg* get_current_task_arg(__async__){
 void se_task_register_memory_to_free(__async__, void *mem, void (*free_fn)(void *)){
     struct se_task_arg *this_arg = get_current_task_arg(__await__);
     struct memory_to_free *new_mem = (struct memory_to_free *)malloc(sizeof(struct memory_to_free));
+    if(!new_mem){
+        log_error("malloc failed");
+        abort();
+    }
     new_mem->mem = mem;
     new_mem->free_fn = free_fn;
     new_mem->next = this_arg->memory_to_free;
@@ -151,7 +158,15 @@ size_t get_current_task_id(__async__){
     return this_arg->task_id;
 }
 
+void set_interrupt_disabled(__async__, int disabled){
+    struct se_task_arg *this_arg = get_current_task_arg(__await__);
+    this_arg->interrupt_disabled = !!disabled;
+}
+
 static void interrupt_task(struct se_task_arg *arg, void *reason){
+    if(arg->interrupt_disabled){
+        return;
+    }
     arg->interrupt_reason = reason;
     s_task_cancel_wait(&arg->stack);
 }
@@ -181,6 +196,7 @@ int se_task_create(sd_event *event, size_t stack_size, s_task_fn_t entry, void *
     this_arg->task_id = g_task_seq++;
     this_arg->memory_to_free = NULL;
     this_arg->interrupt_reason = NULL;
+    this_arg->interrupt_disabled = 0;
     s_list_init(&this_arg->list_node);
     s_list_attach(&all_tasks, &this_arg->list_node);
     s_task_create(&this_arg->stack , stack_size, se_task_entry, this_arg);
@@ -445,4 +461,133 @@ ssize_t msg_stream_read(__async__, struct msg_stream *stream, void *buf, size_t 
 }
 ssize_t msg_stream_write(__async__, struct msg_stream *stream, const void *buf, size_t size, uint64_t usec){
     return msg_stream_do_io(__await__, stream, (void *)buf, size, usec, WRITE);
+}
+
+
+#ifndef __NR_pidfd_open
+#define __NR_pidfd_open 434   /* System call # on most architectures */
+#endif
+
+static int pidfd_open(pid_t pid, unsigned int flags){
+    return syscall(__NR_pidfd_open, pid, flags);
+}
+
+struct pidfd_event {
+    s_event_t event;
+    sd_event_source *source;
+    int terminated;
+    int wait_for_exit;
+    struct {
+        struct se_task_arg *target_task;
+        void *reason;
+    } interrupt;
+};
+
+static int pidfd_event_handler(sd_event_source *s, int fd, uint32_t revents, void *userdata){
+    struct pidfd_event *this_event = (struct pidfd_event *)userdata;
+    log_trace("pidfd_event_handler caller for fd %d, revents: 0x%x", fd, revents);
+
+    this_event->terminated = 1;
+    if(this_event->wait_for_exit){
+        s_event_set(&this_event->event);
+        this_event->wait_for_exit = 0;
+    }else{
+        if(this_event->interrupt.target_task){
+            interrupt_task(this_event->interrupt.target_task, this_event->interrupt.reason);
+        }
+    }
+    return 0;
+}
+
+int init_pidfd_event(struct pidfd_event **pid_event, sd_event *event, pid_t pid){
+    struct pidfd_event *this_event = (struct pidfd_event *)malloc(sizeof(struct pidfd_event));
+    int rc = 0;
+
+    if(this_event == NULL){
+        log_error("malloc: %s", strerror(errno));
+        rc = -errno;
+        goto err_out;
+    }
+    s_event_init(&this_event->event);
+    this_event->source = NULL;
+    this_event->interrupt.target_task = NULL;
+    this_event->interrupt.reason = NULL;
+    this_event->terminated = 0;
+    this_event->wait_for_exit = 0;
+
+    int pidfd = pidfd_open(pid, 0);
+    int pidfd_owned = 0;
+    if(pidfd < 0){
+        log_error("pidfd_open: %s", strerror(errno));
+        rc = -errno;
+        goto err_free_event;
+    }
+
+    rc = sd_event_add_io(event, &this_event->source, pidfd, EPOLLIN, pidfd_event_handler, this_event);
+    if(rc < 0){
+        log_error("sd_event_add_io: %s", strerror(-rc));
+        goto err_close_pidfd;
+    }
+    rc = sd_event_source_set_io_fd_own(this_event->source, true);
+    if(rc < 0){
+        log_error("sd_event_source_set_io_fd_own: %s", strerror(-rc));
+        goto err_free_source;
+    }
+    pidfd_owned = 1;
+    rc = sd_event_source_set_enabled(this_event->source, SD_EVENT_ONESHOT);
+    if(rc < 0){
+        log_error("sd_event_source_set_enabled: %s", strerror(-rc));
+        goto err_free_source;
+    }
+    *pid_event = this_event;
+    return rc;
+err_free_source:
+    sd_event_source_unref(this_event->source);
+err_close_pidfd:
+    if(!pidfd_owned){
+        close(pidfd);
+    }
+err_free_event:
+    free(this_event);
+err_out:
+    return rc;
+}
+void destroy_pidfd_event(struct pidfd_event *pid_event){
+    if(pid_event->source != NULL){
+        sd_event_source_disable_unref(pid_event->source);
+        pid_event->source = NULL;
+    }
+    free(pid_event);
+}
+void pidfd_event_reg_interrupt(__async__, struct pidfd_event *event, void *reason){
+    if(reason == NULL){
+        event->interrupt.target_task = NULL;
+        event->interrupt.reason = NULL;
+    }else{
+        event->interrupt.target_task = get_current_task_arg(__await__);
+        event->interrupt.reason = reason;
+    }
+}
+int pidfd_event_wait_for_exit(__async__, struct pidfd_event *event){
+    int rc = 0;
+    if(event->terminated){
+        return 0;
+    }
+    event->wait_for_exit = 1;
+    if(rc < 0){
+        log_error("sd_event_source_set_enabled: %s", strerror(-rc));
+        return rc;
+    }
+    rc = s_event_wait(__await__, &event->event);
+    if(rc < 0){
+        alog_info("wait interrupted");
+        rc = sd_event_source_set_enabled(event->source, SD_EVENT_OFF);
+        if(rc < 0){
+            log_error("sd_event_source_set_enabled: %s", strerror(-rc));
+        }
+        return -EINTR;
+    }
+
+    rc = 0;
+    return rc;
 }
