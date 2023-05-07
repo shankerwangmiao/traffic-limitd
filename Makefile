@@ -6,13 +6,18 @@ S_TASK_ASM_SRC = \
 	s_task/jump_gas.S \
 	s_task/make_gas.S
 
-SRC = src/main.c src/se_libs.c src/log.c src/unix_sock.c src/sd_bus.c
+DAEMON_SRC = src/main.c src/se_libs.c src/log.c src/unix_sock.c src/sd_bus.c
+CLIENT_SRC = src/client.c
 
 OBJ_DIR = objs
 
-C_OBJS := $(SRC:%.c=$(OBJ_DIR)/%.o) $(S_TASK_C_SRC:%.c=$(OBJ_DIR)/%.o)
-ASM_OBJS := $(S_TASK_ASM_SRC:%.S=$(OBJ_DIR)/%.o)
-TARGET := $(OBJ_DIR)/main
+DAEMON_C_OBJS := $(DAEMON_SRC:%.c=$(OBJ_DIR)/%.o) $(S_TASK_C_SRC:%.c=$(OBJ_DIR)/%.o)
+DAEMON_ASM_OBJS := $(S_TASK_ASM_SRC:%.S=$(OBJ_DIR)/%.o)
+CLIENT_C_OBJS := $(CLIENT_SRC:%.c=$(OBJ_DIR)/%.o)
+C_OBJS := $(DAEMON_C_OBJS) $(CLIENT_C_OBJS)
+ASM_OBJS := $(DAEMON_ASM_OBJS)
+
+TARGET := $(OBJ_DIR)/main $(OBJ_DIR)/client
 
 OBJS := $(C_OBJS) $(ASM_OBJS)
 
@@ -44,7 +49,10 @@ $(DEPFILES):
 	mkdir -p $(dir $@)
 include $(wildcard $(DEPFILES))
 
-$(TARGET): $(OBJS)
+$(OBJ_DIR)/main : $(DAEMON_C_OBJS) $(DAEMON_ASM_OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+
+$(OBJ_DIR)/client : $(CLIENT_C_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 clean:
