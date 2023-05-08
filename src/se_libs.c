@@ -372,6 +372,23 @@ void destroy_msg_stream(struct msg_stream *stream){
 
 int shutdown_msg_stream(__async__, struct msg_stream *stream){
     int rc = 0;
+    while(1){
+        /* drain read buffer */
+        char buf[1];
+        rc = recv(sd_event_source_get_io_fd(stream->source), buf, 1, MSG_DONTWAIT);
+        if(rc == 0){
+            break;
+        }else if(rc < 0){
+            if(errno == EWOULDBLOCK){
+                break;
+            }else if(errno == EINTR){
+                continue;
+            }else{
+                log_error("recv: %s", strerror(errno));
+                return -errno;
+            }
+        }
+    }
     rc = msg_stream_write(__await__, stream, NULL, 0, 0);
     if(rc < 0){
         log_error("msg_stream_write: %s", strerror(-rc));
