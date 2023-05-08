@@ -12,7 +12,7 @@ struct rate_limit {
 #define RATE_UNLIMITED UINT64_MAX
 
 struct rate_limit_msg {
-    size_t length;
+    uint32_t length;
     enum {
         RATE_LIMIT_REQ,
         RATE_LIMIT_FAIL,
@@ -37,6 +37,7 @@ struct rate_limit_fail_attr {
         RATE_LIMIT_FAIL_WILL_WAIT,
         RATE_LIMIT_FAIL_INTERNAL,
         RATE_LIMIT_FAIL_NORESOURCE,
+        RATE_LIMIT_FAIL_YOUR_ERROR,
     } reason;
 };
 
