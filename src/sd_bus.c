@@ -8,6 +8,8 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <systemd/sd-id128.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 const struct bus_locator * const bus_systemd_mgr = &(struct bus_locator){
     .destination = "org.freedesktop.systemd1",
@@ -526,7 +528,7 @@ fail_free_handlers:
     return rc;
 }
 
-int start_transient_scope(__async__, sd_bus *bus, pid_t pid, char **out_scope_name, char **out_scope_obj){
+int start_transient_scope(__async__, sd_bus *bus, pid_t pid, char **out_scope_name, char **out_scope_obj, const char *types, ...){
     char *unit = NULL;
     int rc = 0;
     rc = sb_sd_GetUnitByPID(__await__, bus, pid, &unit);
@@ -602,6 +604,16 @@ int start_transient_scope(__async__, sd_bus *bus, pid_t pid, char **out_scope_na
         if(rc < 0){
             alog_error("sd_bus_message_append failed: %s", strerror(-rc));
             goto fail_free_m_req;
+        }
+        if(types){
+            va_list ap;
+            va_start(ap, types);
+            rc = sd_bus_message_appendv(m_req, types, ap);
+            va_end(ap);
+            if(rc < 0){
+                alog_error("sd_bus_message_appendv failed: %s", strerror(-rc));
+                goto fail_free_m_req;
+            }
         }
     }
     rc = sd_bus_message_close_container(m_req);
@@ -684,6 +696,28 @@ fail_free_slice:
     free(slice);
 fail_free_unit:
     free(unit);
+fail:
+    return rc;
+}
+
+int get_self_unit_name(__async__, sd_bus *bus, char **result){
+    int rc = 0;
+    char *unit_obj = NULL;
+    rc = sb_sd_GetUnitByPID(__await__, bus, getpid(), &unit_obj);
+    if(rc < 0){
+        alog_error("sb_sd_GetUnitByPID failed: %s", strerror(-rc));
+        goto fail;
+    }
+    char *unit_name = NULL;
+    rc = sb_sd_Unit_Get_Id(__await__, bus, unit_obj, &unit_name);
+    if(rc < 0){
+        alog_error("sb_sd_Unit_Get_Id failed: %s", strerror(-rc));
+        goto fail_free_unit_obj;
+    }
+    *result = unit_name;
+    rc = 0;
+fail_free_unit_obj:
+    free(unit_obj);
 fail:
     return rc;
 }

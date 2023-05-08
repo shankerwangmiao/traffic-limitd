@@ -26,6 +26,8 @@ static enum{
     WAIT_TASKS = 2,
 } g_exit_req = NOEXIT;
 
+static char *g_this_unit_name = NULL;
+
 static int exit_req_handler(sd_event_source *s, const struct signalfd_siginfo *si, void *userdata){
     sd_event_source_disable_unref(s);
     if(g_exit_req == NOEXIT){
@@ -81,9 +83,32 @@ static void client_handler_async(__async__, void *arg){
     const struct ucred *cred = msg_stream_get_peer_cred(stream);
     alog_info("Our peer pid=%d, uid=%d", cred->pid, cred->uid);
 
+    if(g_this_unit_name == NULL){
+        char *this_unit_name = NULL;
+        rc = get_self_unit_name(__await__, g_daemon.sd_bus, &this_unit_name);
+        if(rc < 0){
+            if(rc == -EINTR){
+                goto interrupt;
+            }
+            alog_error("get_self_unit_name failed: %s", strerror(-rc));
+            goto err_close_stream;
+        }
+        /*
+            We delay the assign to g_this_unit_name after the async call
+            to ensure that two co-routines won't assign to g_this_unit_name
+            at the same time.
+        */
+        if(g_this_unit_name == NULL){
+            g_this_unit_name = this_unit_name;
+        }else{
+            free(this_unit_name);
+        }
+        alog_trace("got our unit name %s", g_this_unit_name);
+    }
+
     char *scope_obj = NULL;
     char *scope_name = NULL;
-    rc = start_transient_scope(__await__, g_daemon.sd_bus, cred->pid, &scope_name, &scope_obj);
+    rc = start_transient_scope(__await__, g_daemon.sd_bus, cred->pid, &scope_name, &scope_obj, "(sv)(sv)", "After", "as", 1, g_this_unit_name, "BindsTo", "as", 1, g_this_unit_name);
     if(rc < 0){
         if(rc == -EINTR){
             goto interrupt;
@@ -326,5 +351,8 @@ int main(int argc, char *argv[]) {
         sd_event_source_disable_unref(sleep_timer);
     }
     sd_event_unrefp(&g_daemon.event_loop);
+    if(g_this_unit_name){
+        free(g_this_unit_name);
+    }
     return 0;
 }
