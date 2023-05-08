@@ -225,7 +225,7 @@ struct msg_stream {
 static int msg_stream_handler(sd_event_source *s, int fd, uint32_t revents, void *userdata){
     struct msg_stream *this_stream = (struct msg_stream *)userdata;
     int rc = 0;
-    log_trace("msg_stream_handler called for fd %d, revents: 0x%x", fd, revents);
+    //log_trace("msg_stream_handler called for fd %d, revents: 0x%x", fd, revents);
     if(this_stream->timer){
         sd_event_source_disable_unref(this_stream->timer);
         this_stream->timer = NULL;
