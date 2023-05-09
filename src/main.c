@@ -1,18 +1,19 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <systemd/sd-event.h>
-#include <s_task.h>
-#include <se_libs.h>
 #include <errno.h>
 #include <string.h>
 #include <signal.h>
-#include <log.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "daemon.h"
 #include <time.h>
 #include <sys/socket.h>
 #include <protocol.h>
+#include <log.h>
+#include <cgroup_util.h>
+#include <s_task.h>
+#include <se_libs.h>
+#include "daemon.h"
 
 
 static const size_t STACK_SIZE = 256*1024;
@@ -219,8 +220,15 @@ static void client_handler_async(__async__, void *arg){
         goto err_close_stream;
     }
     se_task_register_memory_to_free(__await__, cgroup_path, free);
-
     alog_trace("cgroup_path=%s", cgroup_path);
+
+    uint64_t cgroup_id;
+    rc = cg_path_get_cgroupid(cgroup_path, &cgroup_id);
+    if(rc < 0){
+        alog_error("cg_path_get_cgroupid failed: %s", strerror(-rc));
+        goto err_close_stream;
+    }
+    alog_trace("cgroup_id=%llu", cgroup_id);
 
     #define excepted_msg_len (sizeof(struct rate_limit_msg) + sizeof(struct rate_limit_req_attr))
     char _buf[excepted_msg_len];
@@ -328,6 +336,12 @@ int main(int argc, char *argv[]) {
     rc = install_signals();
     if(rc < 0){
         log_error("install_signals failed: %s", strerror(-rc));
+        return -1;
+    }
+
+    rc = cg_find_unified();
+    if(rc < 0){
+        log_error("cg_find_unified failed: %s", strerror(-rc));
         return -1;
     }
 
