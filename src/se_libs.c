@@ -1,17 +1,19 @@
 #define _GNU_SOURCE
 #include <systemd/sd-event.h>
-#include <s_task.h>
 #include <time.h>
-#include <se_libs.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <log.h>
 #include <string.h>
 #include <unistd.h>
-#include <s_list.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
+#include <assert.h>
+
+#include <s_task.h>
+#include <se_libs.h>
+#include <s_list.h>
+#include <log.h>
 
 struct se_timer_arg{
     s_event_t event;
@@ -24,6 +26,10 @@ static size_t g_task_seq = 1;
 const struct global_interrupt_reasons global_interrupt_reasons;
 
 static int timer_handler(sd_event_source *s, uint64_t usec, void *userdata){
+
+    assert(s);
+    assert(userdata);
+
     struct se_timer_arg *arg = (struct se_timer_arg *)userdata;
     int rc = 0;
     rc = sd_event_source_set_enabled(s, SD_EVENT_OFF);
@@ -41,6 +47,9 @@ static s_list_t all_tasks = {
 };
 
 int se_task_usleep(__async__, sd_event *event, uint64_t usec) {
+
+    assert(event);
+
     struct se_timer_arg this_arg;
     this_arg.error = 0;
     int rc = 0;
@@ -99,6 +108,10 @@ struct se_task_arg{
 
 // Called on main stack
 static int se_task_end_handler(sd_event_source *s, void *userdata){
+
+    assert(s);
+    assert(userdata);
+
     struct se_task_arg *arg = (struct se_task_arg *)userdata;
     s_list_detach(&arg->list_node);
     sd_event_source_disable_unref(arg->source);
@@ -111,6 +124,9 @@ static int se_task_end_handler(sd_event_source *s, void *userdata){
 
 // Called on coroutine stack
 static void se_task_entry(__async__, void *arg){
+
+    assert(arg);
+
     struct se_task_arg *this_arg = (struct se_task_arg *)arg;
     this_arg->entry(__await__, this_arg->arg);
     int rc = sd_event_add_defer(this_arg->event, &this_arg->source, se_task_end_handler, this_arg);
@@ -136,6 +152,9 @@ static struct se_task_arg* get_current_task_arg(__async__){
 }
 
 void se_task_register_memory_to_free(__async__, void *mem, void (*free_fn)(void *)){
+
+    assert(free_fn);
+
     struct se_task_arg *this_arg = get_current_task_arg(__await__);
     struct memory_to_free *new_mem = (struct memory_to_free *)malloc(sizeof(struct memory_to_free));
     if(!new_mem){
@@ -164,6 +183,9 @@ void set_interrupt_disabled(__async__, int disabled){
 }
 
 static void interrupt_task(struct se_task_arg *arg, void *reason){
+
+    assert(arg);
+
     if(arg->interrupt_disabled){
         return;
     }
@@ -185,6 +207,10 @@ bool is_task_empty(void){
 }
 
 int se_task_create(sd_event *event, size_t stack_size, s_task_fn_t entry, void *arg){
+
+    assert(event);
+    assert(entry);
+
     struct se_task_arg *this_arg = (struct se_task_arg *)malloc(sizeof(struct se_task_arg) + stack_size);
     if(this_arg == NULL){
         return -ENOMEM;
@@ -223,6 +249,11 @@ struct msg_stream {
 };
 
 static int msg_stream_handler(sd_event_source *s, int fd, uint32_t revents, void *userdata){
+
+    assert(s);
+    assert(fd >= 0);
+    assert(userdata);
+
     struct msg_stream *this_stream = (struct msg_stream *)userdata;
     int rc = 0;
     //log_trace("msg_stream_handler called for fd %d, revents: 0x%x", fd, revents);
@@ -302,6 +333,11 @@ static int msg_stream_handler(sd_event_source *s, int fd, uint32_t revents, void
 }
 
 int init_msg_stream(struct msg_stream **stream, sd_event *event, int fd){
+
+    assert(stream);
+    assert(event);
+    assert(fd >= 0);
+
     struct msg_stream *this_stream = (struct msg_stream *)malloc(sizeof(struct msg_stream));
     int rc = 0;
 
@@ -358,6 +394,9 @@ err_out:
     return rc;
 }
 void destroy_msg_stream(struct msg_stream *stream){
+
+    assert(stream);
+
     if(stream->source != NULL){
         sd_event_source_disable_unref(stream->source);
         stream->source = NULL;
@@ -371,6 +410,10 @@ void destroy_msg_stream(struct msg_stream *stream){
 }
 
 int shutdown_msg_stream(__async__, struct msg_stream *stream){
+
+    assert(stream);
+    assert(stream->source);
+
     int rc = 0;
     while(1){
         /* drain read buffer */
@@ -423,11 +466,21 @@ int shutdown_msg_stream(__async__, struct msg_stream *stream){
 }
 
 const struct ucred *msg_stream_get_peer_cred(const struct msg_stream *stream){
+
+    assert(stream);
+
     return &stream->cred;
 }
 
 static int io_timer_handler(sd_event_source *s, uint64_t usec, void *userdata){
+
+    assert(s);
+    assert(userdata);
+
     struct msg_stream *this_stream = (struct msg_stream *)userdata;
+
+    assert(this_stream->source);
+
     int rc = 0;
     this_stream->state = NOOP;
     this_stream->error = -ETIMEDOUT;
@@ -443,6 +496,9 @@ static int io_timer_handler(sd_event_source *s, uint64_t usec, void *userdata){
 }
 
 void msg_stream_reg_interrupt(__async__, struct msg_stream *stream, void *reason){
+
+    assert(stream);
+
     if(reason == NULL){
         stream->interrupt.target_task = NULL;
         stream->interrupt.reason = NULL;
@@ -453,6 +509,11 @@ void msg_stream_reg_interrupt(__async__, struct msg_stream *stream, void *reason
 }
 
 static ssize_t msg_stream_do_io(__async__, struct msg_stream *stream, void *buf, size_t size, uint64_t usec, int read_or_write){
+
+    assert(stream);
+    assert(stream->source);
+    assert(stream->event_loop);
+
     int rc = 0;
 
     if(stream->state == ERR){
@@ -536,6 +597,10 @@ struct pidfd_event {
 };
 
 static int pidfd_event_handler(sd_event_source *s, int fd, uint32_t revents, void *userdata){
+
+    assert(s);
+    assert(userdata);
+
     struct pidfd_event *this_event = (struct pidfd_event *)userdata;
     log_trace("pidfd_event_handler caller for fd %d, revents: 0x%x", fd, revents);
 
@@ -552,6 +617,10 @@ static int pidfd_event_handler(sd_event_source *s, int fd, uint32_t revents, voi
 }
 
 int init_pidfd_event(struct pidfd_event **pid_event, sd_event *event, pid_t pid){
+
+    assert(pid_event);
+    assert(event);
+
     struct pidfd_event *this_event = (struct pidfd_event *)malloc(sizeof(struct pidfd_event));
     int rc = 0;
 
@@ -605,6 +674,9 @@ err_out:
     return rc;
 }
 void destroy_pidfd_event(struct pidfd_event *pid_event){
+
+    assert(pid_event);
+
     if(pid_event->source != NULL){
         sd_event_source_disable_unref(pid_event->source);
         pid_event->source = NULL;
@@ -612,6 +684,9 @@ void destroy_pidfd_event(struct pidfd_event *pid_event){
     free(pid_event);
 }
 void pidfd_event_reg_interrupt(__async__, struct pidfd_event *event, void *reason){
+
+    assert(event);
+
     if(reason == NULL){
         event->interrupt.target_task = NULL;
         event->interrupt.reason = NULL;
@@ -621,6 +696,9 @@ void pidfd_event_reg_interrupt(__async__, struct pidfd_event *event, void *reaso
     }
 }
 int pidfd_event_wait_for_exit(__async__, struct pidfd_event *event){
+
+    assert(event);
+
     int rc = 0;
     if(event->terminated){
         return 0;

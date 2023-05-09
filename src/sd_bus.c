@@ -1,8 +1,4 @@
 #define _GNU_SOURCE
-#include "daemon.h"
-#include <log.h>
-#include <s_task.h>
-#include <se_libs.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <ctype.h>
@@ -10,6 +6,12 @@
 #include <systemd/sd-id128.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <assert.h>
+
+#include "daemon.h"
+#include <log.h>
+#include <s_task.h>
+#include <se_libs.h>
 
 const struct bus_locator * const bus_systemd_mgr = &(struct bus_locator){
     .destination = "org.freedesktop.systemd1",
@@ -18,6 +20,11 @@ const struct bus_locator * const bus_systemd_mgr = &(struct bus_locator){
 };
 
 int initialize_sd_bus(struct daemon *daemon){
+
+    assert(daemon);
+    assert(daemon->event_loop);
+    assert(!daemon->sd_bus);
+
     int rc;
     rc = sd_bus_default_system(&daemon->sd_bus);
     if(rc < 0){
@@ -45,7 +52,14 @@ struct sb_bus_call_arg {
 };
 
 static int sb_bus_call_cb(sd_bus_message *m, void *userdata, sd_bus_error *ret_error){
+
+    assert(m);
+    assert(userdata);
+
     struct sb_bus_call_arg *arg = userdata;
+
+    assert(arg->result == NULL);
+
     if(sd_bus_message_is_method_error(m, NULL)){
         arg->error = -sd_bus_message_get_errno(m);
     }else{
@@ -57,6 +71,10 @@ static int sb_bus_call_cb(sd_bus_message *m, void *userdata, sd_bus_error *ret_e
 }
 
 int sb_bus_call(__async__, sd_bus *bus, sd_bus_message *m, sd_bus_message **result, uint64_t usec){
+
+    assert(bus);
+    assert(m);
+
     sd_bus_slot *slot = NULL;
     struct sb_bus_call_arg arg = {
         .result = NULL,
@@ -109,6 +127,9 @@ static inline const char *strempty(const char *s) {
 #define CHAR_TO_STR(x) ((char[2]) { x, 0 })
 
 int sb_bus_call_methodv(__async__, sd_bus *bus, const struct bus_locator *locator, const char *member, sd_bus_message **result, const char *types, va_list ap) {
+
+    assert(locator);
+
     sd_bus_message *m = NULL;
     int rc = 0;
     rc = sd_bus_message_new_method_call(bus, &m, locator->destination, locator->path, locator->interface, member);
@@ -171,6 +192,13 @@ int sb_bus_call_unit_method(__async__, sd_bus *bus, const char *path, const char
 }
 
 int sb_bus_get_property(__async__, sd_bus *bus, const struct bus_locator *locator, const char *member, sd_bus_message **reply, const char *type) {
+
+    assert(bus);
+    assert(locator);
+    assert(member);
+    assert(reply);
+    assert(type);
+
     sd_bus_message *rep = NULL;
     const struct bus_locator prop_locator = {
         .destination = locator->destination,
@@ -218,6 +246,9 @@ fail:
 }
 
 int sb_bus_get_property_string(__async__, sd_bus *bus, const struct bus_locator *locator, const char *member, char **result) {
+
+    assert(result);
+
     int rc = 0;
     sd_bus_message *rep = NULL;
     const char *prop_str;
@@ -249,6 +280,13 @@ fail:
 #define SD_INTERFACE_NAME "org.freedesktop.systemd1."
 
 int sb_sd_Unit_Get_subprop(__async__, sd_bus *bus, const char *unit_obj, const char *member, sd_bus_message **reply, const char *type) {
+
+    assert(bus);
+    assert(unit_obj);
+    assert(member);
+    assert(reply);
+    assert(type);
+
     int rc = 0;
     char *unit_name = NULL;
     rc = sb_sd_Unit_Get_Id(__await__, bus, unit_obj, &unit_name);
@@ -327,6 +365,10 @@ fail:
 }
 
 int sb_sd_GetUnitByPID(__async__, sd_bus *bus, pid_t pid, char **result){
+
+    assert(result);
+    assert(bus);
+
     int rc;
     sd_bus_message *result_msg = NULL;
     const char *unit = NULL;
@@ -355,6 +397,9 @@ err_bus_call:
 }
 
 void sb_sd_free_wait_for_job(struct sb_sd_wait_for_job_arg *arg){
+
+    assert(arg);
+
     if(!arg->closed){
         if(arg->slot_disconnected){
             sd_bus_slot_unref(arg->slot_disconnected);
@@ -370,7 +415,14 @@ void sb_sd_free_wait_for_job(struct sb_sd_wait_for_job_arg *arg){
 }
 
 static int sb_sd_wait_for_job_bus_disconnected(sd_bus_message *m, void *userdata, sd_bus_error *ret_error){
+
+    assert(m);
+    assert(userdata);
+
     struct sb_sd_wait_for_job_arg *arg = userdata;
+
+    assert(arg->result == NULL);
+
     log_error("bus disconnected event");
     arg->rc = -ECONNRESET;
     char *result = strdup("disconnected");
@@ -385,7 +437,14 @@ static int sb_sd_wait_for_job_bus_disconnected(sd_bus_message *m, void *userdata
 }
 
 static int sb_sd_wait_for_job_job_removed(sd_bus_message *m, void *userdata, sd_bus_error *ret_error){
+
+    assert(m);
+    assert(userdata);
+
     struct sb_sd_wait_for_job_arg *arg = userdata;
+
+    assert(arg->result == NULL);
+
     int rc;
     uint32_t id;
     const char *path, *unit, *result;
@@ -436,6 +495,10 @@ static int sb_sd_wait_for_job_job_removed(sd_bus_message *m, void *userdata, sd_
 }
 
 static int sb_sd_wait_for_job_signal_match_installed(sd_bus_message *m, void *userdata, sd_bus_error *ret_error){
+
+    assert(m);
+    assert(userdata);
+
     struct sb_sd_wait_for_job_arg *arg = userdata;
     if(sd_bus_message_is_method_error(m, NULL)){
         arg->rc = -sd_bus_message_get_errno(m);
@@ -448,6 +511,10 @@ static int sb_sd_wait_for_job_signal_match_installed(sd_bus_message *m, void *us
 }
 
 int sb_sd_init_wait_for_job(__async__, sd_bus *bus, struct sb_sd_wait_for_job_arg *arg){
+
+    assert(bus);
+    assert(arg);
+
     int rc = 0;
     *arg = (struct sb_sd_wait_for_job_arg){
         .job_obj = NULL,
@@ -498,6 +565,9 @@ fail:
 }
 
 int sb_sd_wait_for_job(__async__, struct sb_sd_wait_for_job_arg *arg, const char * const job_obj, char **result){
+
+    assert(arg);
+
     int rc = 0;
     if(!arg->closed){
         arg->job_obj = job_obj;
@@ -517,6 +587,7 @@ int sb_sd_wait_for_job(__async__, struct sb_sd_wait_for_job_arg *arg, const char
     rc = arg->rc;
     if(result && arg->result){
         *result = arg->result;
+        arg->result = NULL;
     }else if(arg->result){
         free(arg->result);
         arg->result = NULL;
@@ -529,6 +600,11 @@ fail_free_handlers:
 }
 
 int start_transient_scope(__async__, sd_bus *bus, pid_t pid, char **out_scope_name, char **out_scope_obj, const char *types, ...){
+
+    assert(bus);
+    assert(out_scope_name);
+    assert(out_scope_obj);
+
     char *unit = NULL;
     int rc = 0;
     rc = sb_sd_GetUnitByPID(__await__, bus, pid, &unit);
@@ -701,6 +777,10 @@ fail:
 }
 
 int get_self_unit_name(__async__, sd_bus *bus, char **result){
+
+    assert(bus);
+    assert(result);
+
     int rc = 0;
     char *unit_obj = NULL;
     rc = sb_sd_GetUnitByPID(__await__, bus, getpid(), &unit_obj);

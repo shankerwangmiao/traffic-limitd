@@ -1,5 +1,4 @@
 #define _GNU_SOURCE // for SOCK_NONBLOCK and SOCK_CLOEXEC
-#include <log.h>
 #include <stdlib.h>
 #include <systemd/sd-event.h>
 #include <sys/socket.h>
@@ -9,6 +8,9 @@
 #include <unistd.h>
 #include <systemd/sd-daemon.h>
 #include <fcntl.h>
+#include <assert.h>
+
+#include <log.h>
 #include "daemon.h"
 
 struct listen_handler_arg {
@@ -17,6 +19,10 @@ struct listen_handler_arg {
 };
 
 static int unix_server_listen_handler(sd_event_source *s, int fd, uint32_t revents, void *userdata){
+
+    assert(s);
+    assert(userdata);
+
     struct listen_handler_arg *arg = (struct listen_handler_arg *)userdata;
     void (*handler)(int fd) = arg->handler;
 
@@ -36,10 +42,18 @@ static int unix_server_listen_handler(sd_event_source *s, int fd, uint32_t reven
 }
 
 static void unix_server_listen_destroy_handler(void *userdata){
+
+    assert(userdata);
+
     free(userdata);
 }
 
 int setup_unix_listening_socket(struct daemon *daemon, void (*handler)(int fd)){
+
+    assert(daemon);
+    assert(handler);
+    assert(daemon->event_loop);
+
     int rc = 0;
     int fd = -1;
 
