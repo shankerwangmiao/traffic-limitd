@@ -255,11 +255,14 @@ int main(int argc, char *argv[]){
         return 1;
     }
 
-    sighandler_t orig_sig;
     if(options.wait_time > 0){
         // set timeout handler
-        orig_sig = signal(SIGALRM, timeout_handler);
-        if(orig_sig == SIG_ERR){
+        rc = sigaction(SIGALRM, &(const struct sigaction){
+            .sa_handler = timeout_handler,
+            .sa_flags = 0,
+            .sa_mask = {{0}},
+        }, NULL);
+        if(rc < 0){
             perror("unable to set signal handler");
             return 1;
         }
@@ -351,7 +354,7 @@ out_recv_loop:
     if(options.wait_time > 0){
         alarm(0);
         // restore signal handler
-        orig_sig = signal(SIGALRM, orig_sig);
+        sighandler_t orig_sig = signal(SIGALRM, SIG_DFL);
         if(orig_sig == SIG_ERR){
             perror("unable to restore signal handler");
             return 1;
