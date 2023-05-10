@@ -7,6 +7,8 @@
 #include <asm-generic/errno.h>
 #include <linux/ipv6.h>
 
+#include <bpf_protocol.h>
+
 
 #ifndef __maybe_unused
 # define __maybe_unused         __attribute__((__unused__))
@@ -50,12 +52,6 @@ struct rate_limit_priv {
 	time_ns_t next_avail_ts;
 };
 
-struct rate_limit {
-	__u64 byte_rate;
-	__u64 packet_rate;
-};
-
-
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, cgroup_id_t);
@@ -84,8 +80,11 @@ long cgroup_rate_limit(struct __sk_buff *skb){
 	if (!rlcf){
 		return TC_ACT_OK;
 	}
-	const time_ns_t delay_ns_byte = rlcf->byte_rate ? (this_pkt_len * NS_PER_SEC + rlcf->byte_rate / 2) / rlcf->byte_rate : 0;
-	const time_ns_t delay_ns_pkt  = rlcf->packet_rate ? (NS_PER_SEC + rlcf->packet_rate / 2) / rlcf->packet_rate : 0;
+	if(rlcf->byte_rate == 0 || rlcf->packet_rate == 0){
+		return TC_ACT_SHOT;
+	}
+	const time_ns_t delay_ns_byte = rlcf->byte_rate == RATE_UNLIMITED ? 0 : (this_pkt_len * NS_PER_SEC + rlcf->byte_rate / 2) / rlcf->byte_rate;
+	const time_ns_t delay_ns_pkt  = rlcf->packet_rate == RATE_UNLIMITED ? 0 : (NS_PER_SEC + rlcf->packet_rate / 2) / rlcf->packet_rate;
 	const time_ns_t delay_ns = delay_ns_pkt > delay_ns_byte ? delay_ns_pkt : delay_ns_byte;
 
 	struct rate_limit_priv volatile *priv = bpf_map_lookup_elem(&rate_limit_priv_map, &cgid);

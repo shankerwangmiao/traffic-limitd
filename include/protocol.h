@@ -4,12 +4,7 @@
 #include<stdint.h>
 #include<stddef.h>
 
-struct rate_limit {
-    uint64_t byte_rate;
-    uint64_t packet_rate;
-};
-
-#define RATE_UNLIMITED UINT64_MAX
+#include<bpf_protocol.h>
 
 struct rate_limit_msg {
     uint32_t length;
