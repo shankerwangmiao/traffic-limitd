@@ -352,6 +352,12 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    rc = open_and_load_bpf_obj();
+    if(rc < 0){
+        log_error("open_and_load_bpf_obj failed: %s", strerror(-rc));
+        return -1;
+    }
+
     rc = tc_setup_inferface(ifnames);
     if(rc < 0){
         log_error("tc_setup_inferface failed: %s", strerror(-rc));
@@ -473,5 +479,6 @@ int main(int argc, char *argv[]) {
     if(g_this_unit_name){
         free(g_this_unit_name);
     }
+    close_bpf_obj();
     return 0;
 }

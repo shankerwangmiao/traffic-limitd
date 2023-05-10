@@ -56,5 +56,6 @@ int log_add_fp(FILE *fp, int level);
 void log_set_systemd(bool enable);
 
 void log_log(size_t task_id, int level, const char *func, const char *file, int line, const char *fmt, ...);
+void log_vlog(size_t task_id, int level, const char *func, const char *file, int line, const char *fmt, va_list ap);
 
 #endif

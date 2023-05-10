@@ -7,11 +7,16 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <linux/pkt_sched.h>
+#include <linux/pkt_cls.h>
+#include <bpf/libbpf.h>
+#include <linux/if_ether.h>
+#include <arpa/inet.h>
 
 
 #include <log.h>
 #include <tcbpf_util.h>
 #include <rtnl_util.h>
+#include <cgroup_rate_limit.skel.h>
 
 #define TCA_BUF_MAX	(64*1024)
 
@@ -38,7 +43,7 @@ static inline const char *rta_getattr_str(const struct rtattr *rta)
 	return (const char *)RTA_DATA(rta);
 }
 
-int addattr_l(struct nlmsghdr *n, size_t maxlen, int type, const void *data, int alen){
+static int addattr_l(struct nlmsghdr *n, size_t maxlen, int type, const void *data, int alen){
     int len = RTA_LENGTH(alen);
     struct rtattr *rta;
 
@@ -55,10 +60,20 @@ int addattr_l(struct nlmsghdr *n, size_t maxlen, int type, const void *data, int
     return 0;
 }
 
+static int addattr32(struct nlmsghdr *n, int maxlen, int type, __u32 data){
+	return addattr_l(n, maxlen, type, &data, sizeof(__u32));
+}
+
+static int addattrstrz(struct nlmsghdr *n, int maxlen, int type, const char *str){
+	return addattr_l(n, maxlen, type, str, strlen(str)+1);
+}
+
 struct iface_attr{
     int num_tx_queues;
     enum qidsc_kind qdisc_kind;
 };
+
+static struct cgroup_rate_limit *cg_rl_skel = NULL;
 
 static int get_iface_props(struct rtnl_handle *rth, unsigned int ifindex, struct iface_attr *result){
 
@@ -177,7 +192,7 @@ static int tc_replace_qdisc(struct rtnl_handle *rth, unsigned int ifindex, __u32
             log_error("Invalid qdisc kind %d", kind);
             return -EINVAL;
     }
-    addattr_l(&req.n, sizeof(req), TCA_KIND, kind_name, strlen(kind_name)+1);
+    addattrstrz(&req.n, sizeof(req), TCA_KIND, kind_name);
     int rc = rtnl_talk(rth, &req.n, NULL);
     if(rc < 0){
         log_error("Cannot replace qdisc on ifindex %u: %s", ifindex, strerror(-rc));
@@ -205,6 +220,65 @@ static int tc_del_qdisc(struct rtnl_handle *rth, unsigned int ifindex, __u32 par
     int rc = rtnl_talk(rth, &req.n, NULL);
     if(rc < 0){
         log_error("Cannot replace qdisc on ifindex %u: %s", ifindex, strerror(-rc));
+        return rc;
+    }
+    rc = 0;
+    return rc;
+}
+
+static int tc_del_filter(struct rtnl_handle *rth, unsigned int ifindex, __u32 parent, __u32 prio){
+    struct {
+        struct nlmsghdr	n;
+        struct tcmsg    t;
+        char            buf[TCA_BUF_MAX];
+    } req = {
+        .n.nlmsg_len = NLMSG_LENGTH(sizeof(struct tcmsg)),
+        .n.nlmsg_flags = NLM_F_REQUEST,
+        .n.nlmsg_type = RTM_DELTFILTER,
+        .t.tcm_family = AF_UNSPEC,
+        .t.tcm_ifindex = ifindex,
+        .t.tcm_parent = parent,
+        .t.tcm_info = TC_H_MAKE(prio<<16, 0),
+    };
+
+    int rc = rtnl_talk(rth, &req.n, NULL);
+    if(rc < 0){
+        log_error("Cannot del filter chain on ifindex %u: %s", ifindex, strerror(-rc));
+        return rc;
+    }
+    rc = 0;
+    return rc;
+}
+
+static int tc_replace_bpf_filter(struct rtnl_handle *rth, unsigned int ifindex, __u32 parent, __u32 prio, __u32 handle, int bpf_fd, const char *name){
+    struct {
+        struct nlmsghdr	n;
+        struct tcmsg    t;
+        char            buf[TCA_BUF_MAX];
+    } req = {
+        .n.nlmsg_len = NLMSG_LENGTH(sizeof(struct tcmsg)),
+        .n.nlmsg_flags = NLM_F_REQUEST | NLM_F_CREATE,
+        .n.nlmsg_type = RTM_NEWTFILTER,
+        .t.tcm_family = AF_UNSPEC,
+        .t.tcm_ifindex = ifindex,
+        .t.tcm_parent = parent,
+        .t.tcm_handle = handle,
+        .t.tcm_info = TC_H_MAKE(prio<<16, htons(ETH_P_ALL)),
+    };
+
+    addattrstrz(&req.n, sizeof(req), TCA_KIND, "bpf");
+    struct rtattr *tail = NLMSG_TAIL(&req.n);
+    addattr_l(&req.n, sizeof(req), TCA_OPTIONS, NULL, 0);
+    addattr32(&req.n, sizeof(req), TCA_BPF_FD, bpf_fd);
+    addattr32(&req.n, sizeof(req), TCA_BPF_FD, bpf_fd);
+    addattrstrz(&req.n, sizeof(req), TCA_BPF_NAME, name);
+    addattr32(&req.n, sizeof(req), TCA_BPF_FLAGS, TCA_BPF_FLAG_ACT_DIRECT);
+    tail->rta_len = (((void *)&req.n) + req.n.nlmsg_len) - (void *)tail;
+
+
+    int rc = rtnl_talk(rth, &req.n, NULL);
+    if(rc < 0){
+        log_error("Cannot replace filter chain on ifindex %u: %s", ifindex, strerror(-rc));
         return rc;
     }
     rc = 0;
@@ -300,12 +374,45 @@ static int tc_setup_one_inferface(struct rtnl_handle *rth, const char *ifname){
         }
     }
 
+    static const int prio = 49151;
+    static const int handle = 1;
+
+    rc = bpf_program__fd(cg_rl_skel->progs.cgroup_rate_limit);
+    if(rc < 0){
+        log_error("bpf_program__fd failed: %s", strerror(-rc));
+        return rc;
+    }
+    int bpf_fd = rc;
+
+    nr_try = 0;
+    while(1){
+        log_trace("tc filter replace dev %s pref %d handle %d egress bpf da fd %d", ifname, prio, handle, bpf_fd);
+        rc = tc_replace_bpf_filter(rth, ifindex, TC_H_MAKE(TC_H_CLSACT, TC_H_MIN_EGRESS), prio, handle, bpf_fd, "cgroup_rate_limit");
+        if(rc < 0){
+            log_error("tc filter replace dev %s pref %d handle %d egress bpf da fd %d failed: %s", ifname, prio, handle, bpf_fd, strerror(-rc));
+            if(nr_try > 0){
+                return rc;
+            }
+            log_info("trying del first");
+            log_trace("tc filter del dev %s pref %d egress", ifname, prio);
+            rc = tc_del_filter(rth, ifindex, TC_H_MAKE(TC_H_CLSACT, TC_H_MIN_EGRESS), prio);
+            if(rc < 0){
+                log_error("tc filter del dev %s pref %d egress failed: %s", ifname, prio, strerror(-rc));
+                return rc;
+            }
+            nr_try ++;
+        }else{
+            break;
+        }
+    }
+
     log_info("tc setup for %s done", ifname);
     return 0;
 }
 
 int tc_setup_inferface(const char *ifnames){
     assert(ifnames);
+    assert(cg_rl_skel);
 
     size_t str_len = strlen(ifnames);
 
@@ -342,4 +449,78 @@ fail_close_rtnl:
     rtnl_close(&rth);
 fail:
     return rc;
+}
+
+static int libbpf_print(enum libbpf_print_level level, const char *fmt, va_list ap){
+    int log_level = 0;
+    switch (level){
+        case LIBBPF_DEBUG:
+            log_level = LOG_TRACE;
+            break;
+        case LIBBPF_WARN:
+            log_level = LOG_WARN;
+            break;
+        case LIBBPF_INFO:
+            log_level = LOG_INFO;
+            break;
+        default:
+            return 0;
+            break;
+    }
+    int length = strlen(fmt);
+    char buf[length + 1];
+    strncpy(buf, fmt, length + 1);
+
+    if(length > 0){
+        for(int i = length - 1; i >= 0; i--){
+            if(buf[i] == '\n'){
+                buf[i] = '\0';
+            }else{
+                break;
+            }
+        }
+    }
+
+    log_vlog(0, log_level, "", "libbpf", 0, buf, ap);
+    return 0;
+}
+
+int open_and_load_bpf_obj(void){
+    int rc = 0;
+
+    assert(cg_rl_skel == NULL);
+
+    libbpf_set_print(libbpf_print);
+
+    cg_rl_skel = cgroup_rate_limit__open();
+    if(cg_rl_skel == NULL){
+        log_error("cgroup_rate_limit__open() failed: %s", strerror(errno));
+        rc = -errno;
+        goto fail;
+    }
+
+    bpf_program__set_type(cg_rl_skel->progs.cgroup_rate_limit, BPF_PROG_TYPE_SCHED_CLS);
+    bpf_program__set_expected_attach_type(cg_rl_skel->progs.cgroup_rate_limit, 0);
+
+    rc = cgroup_rate_limit__load(cg_rl_skel);
+    if(rc < 0){
+        log_error("cgroup_rate_limit__load() failed: %s", strerror(-rc));
+        goto fail_free_skel;
+    }
+    rc = 0;
+    return rc;
+
+fail_free_skel:
+    cgroup_rate_limit__destroy(cg_rl_skel);
+    cg_rl_skel = NULL;
+fail:
+    return rc;
+}
+
+int close_bpf_obj(void){
+    assert(cg_rl_skel);
+
+    cgroup_rate_limit__destroy(cg_rl_skel);
+    cg_rl_skel = NULL;
+    return 0;
 }

@@ -58,7 +58,6 @@ struct {
 	__type(value, struct rate_limit);
 	__uint(max_entries, MAP_MAX_LEN);
 	__uint(map_flags, BPF_F_RDONLY_PROG);
-	__uint(pinning, LIBBPF_PIN_BY_NAME);
 } rate_limit_map SEC(".maps");
 
 struct {
@@ -66,7 +65,6 @@ struct {
 	__type(key, cgroup_id_t);
 	__type(value, struct rate_limit_priv);
 	__uint(max_entries, MAP_MAX_LEN);
-	__uint(pinning, LIBBPF_PIN_NONE);
 } rate_limit_priv_map SEC(".maps");
 
 

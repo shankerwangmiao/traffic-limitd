@@ -30,7 +30,7 @@ INCS := -I./include
 
 CFLAGS += -Wall -Werror -g -Wextra -Wstrict-prototypes -Wno-unused-parameter -Wno-deprecated-declarations $(INCS) -I$(OBJ_DIR)/generated/include
 
-LDLIBS += $(shell pkg-config --cflags --libs libsystemd)
+LDLIBS += $(shell pkg-config --cflags --libs libsystemd libbpf)
 
 LDFLAGS += -g
 
@@ -40,6 +40,8 @@ DEPFLAGS = -MT $@ -MMD -MP -MF $(OBJ_DIR)/$(DEPDIR)/$*.d
 COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) -c
 COMPILE.bpf = $(BPFCC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) -c
 
+HDR_GEN_TAG := $(OBJ_DIR)/.header_generated
+
 all: $(TARGET)
 
 $(BPF_OBJS) : $(OBJ_DIR)/%.o : %.bpf.c $(OBJ_DIR)/$(DEPDIR)/%.d
@@ -48,10 +50,10 @@ $(BPF_OBJS) : $(OBJ_DIR)/%.o : %.bpf.c $(OBJ_DIR)/$(DEPDIR)/%.d
 $(BPF_GEN_HEADERS) : $(OBJ_DIR)/generated/include/%.skel.h : $(OBJ_DIR)/src/%.o
 	mkdir -p $(dir $@)
 	bpftool gen skeleton $< > $@
-$(C_OBJS) : $(OBJ_DIR)/%.o : %.c $(OBJ_DIR)/$(DEPDIR)/%.d header_generate
+$(C_OBJS) : $(OBJ_DIR)/%.o : %.c $(OBJ_DIR)/$(DEPDIR)/%.d $(HDR_GEN_TAG)
 	mkdir -p $(dir $@)
 	$(COMPILE.c) -o $@ $<
-$(ASM_OBJS) : $(OBJ_DIR)/%.o : %.S $(OBJ_DIR)/$(DEPDIR)/%.d header_generate
+$(ASM_OBJS) : $(OBJ_DIR)/%.o : %.S $(OBJ_DIR)/$(DEPDIR)/%.d $(HDR_GEN_TAG)
 	mkdir -p $(dir $@)
 	$(COMPILE.c) -o $@ $<
 
@@ -70,6 +72,7 @@ $(OBJ_DIR)/client : $(CLIENT_C_OBJS)
 clean:
 	rm -rf $(OBJ_DIR)
 
-header_generate: $(BPF_GEN_HEADERS)
+$(HDR_GEN_TAG): $(BPF_GEN_HEADERS)
+	touch $@
 
-.PHONY: all clean header_generate
+.PHONY: all clean
