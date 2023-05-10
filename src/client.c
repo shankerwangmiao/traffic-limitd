@@ -153,7 +153,7 @@ int main(int argc, char *argv[]){
         return 0;
     }
 
-    while ((opt = getopt_long (argc, argv, "p:b:w:c:h", long_options, NULL)) != -1){
+    while ((opt = getopt_long (argc, argv, "+p:b:w:c:h", long_options, NULL)) != -1){
         switch(opt){
             case 'p':
                 if(parseRate(optarg, &options.packet_rate) != PARSE_SUFFIX_OK){
