@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/socket.h>
+#include <assert.h>
 #include <protocol.h>
 #include <log.h>
 #include <cgroup_util.h>
@@ -139,6 +140,35 @@ static void clear_rate_limit(void *data){
     }
 }
 
+static int get_Unit_cgroup_id(__async__, const char *unit, uint64_t *cgroup_id){
+
+    assert(unit);
+    assert(cgroup_id);
+
+    int rc = 0;
+    char *cgroup_path = NULL;
+    rc = sb_Unit_Get_subprop_string(__await__, g_daemon.sd_bus, unit, "ControlGroup", &cgroup_path);
+    if(rc < 0){
+        alog_error("sb_Unit_Get_subprop_string(unit, ControlGroup) failed: %s", strerror(-rc));
+        goto fail_free_cgroup_path;
+    }
+    alog_trace("cgroup_path=%s", cgroup_path);
+
+    uint64_t this_cgroup_id;
+    rc = cg_path_get_cgroupid(cgroup_path, &this_cgroup_id);
+    if(rc < 0){
+        alog_error("cg_path_get_cgroupid failed: %s", strerror(-rc));
+        goto fail_free_cgroup_path;
+    }
+    alog_trace("cgroup_id=%llu", this_cgroup_id);
+    *cgroup_id = this_cgroup_id;
+
+    rc = 0;
+fail_free_cgroup_path:
+    free(cgroup_path);
+    return rc;
+}
+
 static void client_handler_async(__async__, void *arg){
     enum {
         INT_IO_ERR = 1,
@@ -195,6 +225,39 @@ static void client_handler_async(__async__, void *arg){
         alog_trace("got our unit name %s", g_this_unit_name);
     }
 
+    char *orig_unit = NULL;
+    rc = sb_sd_GetUnitByPID(__await__, g_daemon.sd_bus, cred->pid, &orig_unit);
+    if(rc < 0){
+        if(rc == -EINTR){
+            goto interrupt;
+        }
+        alog_error("sb_sd_GetUnitByPID failed: %s", strerror(-rc));
+        goto err_close_stream;
+    }
+    alog_trace("Orig unit id: %s", orig_unit);
+    se_task_register_memory_to_free(__await__, orig_unit, free);
+
+    uint64_t orig_cgroup_id = 0;
+    rc = get_Unit_cgroup_id(__await__, orig_unit, &orig_cgroup_id);
+    if(rc < 0){
+        if(rc == -EINTR){
+            goto interrupt;
+        }
+        alog_error("get_Unit_cgroup_id(orig_unit) failed: %s", strerror(-rc));
+        goto err_close_stream;
+    }
+
+    rc = cgroup_rate_limit_check(orig_cgroup_id);
+    if(rc < 0){
+        alog_error("cgroup_rate_limit_check(orig_cgroup) failed: %s", strerror(-rc));
+    }else if(rc){
+        alog_warn("The cgroup of the original process is rate limited, reject new connection");
+        write_rate_limit_log(__await__, stream, "Recursive rate limit is not allowed");
+        client_error = 1;
+        rc = -ELOOP;
+        goto err_close_stream;
+    }
+
     rc = start_transient_scope(__await__, g_daemon.sd_bus, cred->pid, &scope_name, &scope_obj,
         "(sv)(sv)(sv)",
         "After", "as", 1, g_this_unit_name,
@@ -222,22 +285,13 @@ static void client_handler_async(__async__, void *arg){
     se_task_register_memory_to_free(__await__, pidfd_event, (void (*)(void *))destroy_pidfd_event);
     pidfd_event_reg_interrupt(__await__, pidfd_event, (void *)INT_PROC_END);
 
-    char *cgroup_path = NULL;
-    rc = sb_Unit_Get_subprop_string(__await__, g_daemon.sd_bus, scope_obj, "ControlGroup", &cgroup_path);
+    uint64_t cgroup_id;
+    rc = get_Unit_cgroup_id(__await__, scope_obj, &cgroup_id);
     if(rc < 0){
         if(rc == -EINTR){
             goto interrupt;
         }
-        alog_error("sb_Unit_Get_subprop_string(scope, ControlGroup) failed: %s", strerror(-rc));
-        goto err_close_stream;
-    }
-    se_task_register_memory_to_free(__await__, cgroup_path, free);
-    alog_trace("cgroup_path=%s", cgroup_path);
-
-    uint64_t cgroup_id;
-    rc = cg_path_get_cgroupid(cgroup_path, &cgroup_id);
-    if(rc < 0){
-        alog_error("cg_path_get_cgroupid failed: %s", strerror(-rc));
+        alog_error("get_Unit_cgroup_id(scope) failed: %s", strerror(-rc));
         goto err_close_stream;
     }
     alog_trace("cgroup_id=%llu", cgroup_id);

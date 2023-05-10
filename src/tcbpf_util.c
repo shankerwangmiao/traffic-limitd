@@ -573,6 +573,20 @@ static int bpf_map_delete_elem(int fd, const void *key){
     return rc;
 }
 
+static int bpf_lookup_elem(int fd, const void *key, void *value){
+    union bpf_attr attr = {
+        .map_fd = fd,
+        .key    = ptr_to_u64(key),
+        .value  = ptr_to_u64(value),
+    };
+    int rc;
+    rc = sys_bpf(BPF_MAP_LOOKUP_ELEM, &attr, sizeof(attr));
+    if(rc < 0){
+        rc = -errno;
+    }
+    return rc;
+}
+
 
 int cgroup_rate_limit_set(uint64_t cg_id, const struct rate_limit *limit){
     int rc = 0;
@@ -593,5 +607,22 @@ int cgroup_rate_limit_unset(uint64_t cg_id){
         goto fail;
     }
 fail:
+    return rc;
+}
+
+int cgroup_rate_limit_check(uint64_t cg_id){
+    struct rate_limit limit;
+    int rc = 0;
+    rc = bpf_lookup_elem(bpf_map__fd(cg_rl_skel->maps.rate_limit_map), &cg_id, &limit);
+
+    if(rc < 0){
+        if(rc == -ENOENT){
+            rc = 0;
+        }else{
+            log_error("bpf_lookup_elem() failed: %s", strerror(-rc));
+        }
+    }else{
+        rc = 1;
+    }
     return rc;
 }
