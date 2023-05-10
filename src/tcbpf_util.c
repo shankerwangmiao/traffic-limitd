@@ -194,7 +194,7 @@ static int tc_del_qdisc(struct rtnl_handle *rth, unsigned int ifindex, __u32 par
         char            buf[TCA_BUF_MAX];
     } req = {
         .n.nlmsg_len = NLMSG_LENGTH(sizeof(struct tcmsg)),
-        .n.nlmsg_flags = 0,
+        .n.nlmsg_flags = NLM_F_REQUEST,
         .n.nlmsg_type = RTM_DELQDISC,
         .t.tcm_family = AF_UNSPEC,
         .t.tcm_ifindex = ifindex,
@@ -279,7 +279,7 @@ static int tc_setup_one_inferface(struct rtnl_handle *rth, const char *ifname){
         }
     }
     int nr_try = 0;
-    do{
+    while(1){
         log_trace("tc qdisc replace dev %s clsact", ifname);
         rc = tc_replace_qdisc(rth, ifindex, TC_H_CLSACT, TC_H_MAKE(TC_H_CLSACT, 0), QDISC_KIND_CLSACT);
         if(rc < 0){
@@ -295,8 +295,10 @@ static int tc_setup_one_inferface(struct rtnl_handle *rth, const char *ifname){
                 return rc;
             }
             nr_try++;
+        }else{
+            break;
         }
-    }while(rc < 0);
+    }
 
     log_info("tc setup for %s done", ifname);
     return 0;
