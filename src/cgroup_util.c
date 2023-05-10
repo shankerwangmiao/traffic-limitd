@@ -34,21 +34,21 @@ int cg_find_unified(void) {
         return -errno;
     }
     if (F_TYPE_EQUAL(fs.f_type, CGROUP2_SUPER_MAGIC)) {
-        log_debug("Found cgroup2 on /sys/fs/cgroup/, full unified hierarchy");
+        log_info("Found cgroup2 on /sys/fs/cgroup/, full unified hierarchy");
         cgv2_path = "/sys/fs/cgroup/";
     } else if (F_TYPE_EQUAL(fs.f_type, TMPFS_MAGIC)) {
         rc = statfs("/sys/fs/cgroup/unified/", &fs);
         if ( rc == 0 &&
             F_TYPE_EQUAL(fs.f_type, CGROUP2_SUPER_MAGIC)
         ) {
-            log_debug("Found cgroup2 on /sys/fs/cgroup/unified, unified hierarchy for systemd controller");
+            log_info("Found cgroup2 on /sys/fs/cgroup/unified, unified hierarchy for systemd controller");
             cgv2_path = "/sys/fs/cgroup/unified/";
         } else {
             rc = statfs("/sys/fs/cgroup/systemd/", &fs);
             if (rc < 0) {
                 if (errno == ENOENT) {
                     /* Some other software may have set up /sys/fs/cgroup in a configuration we do not recognize. */
-                    log_debug("Unsupported cgroupsv1 setup detected: name=systemd hierarchy not found");
+                    log_error("Unsupported cgroupsv1 setup detected: name=systemd hierarchy not found");
                     return -ENOMEDIUM;
                 }
                 log_error("statfs(\"/sys/fs/cgroup/systemd\" failed: %s", strerror(errno));
@@ -56,13 +56,13 @@ int cg_find_unified(void) {
             }
 
             if (F_TYPE_EQUAL(fs.f_type, CGROUP2_SUPER_MAGIC)) {
-                log_debug("Found cgroup2 on /sys/fs/cgroup/systemd, unified hierarchy for systemd controller (v232 variant)");
+                log_info("Found cgroup2 on /sys/fs/cgroup/systemd, unified hierarchy for systemd controller (v232 variant)");
                 cgv2_path = "/sys/fs/cgroup/systemd/";
             } else if (F_TYPE_EQUAL(fs.f_type, CGROUP_SUPER_MAGIC)) {
-                log_debug("Found cgroup on /sys/fs/cgroup/systemd, legacy hierarchy");
+                log_error("Found cgroup on /sys/fs/cgroup/systemd, legacy hierarchy");
                 return -ENOMEDIUM;
             } else {
-                log_debug("Unexpected filesystem type %llx mounted on /sys/fs/cgroup/systemd, assuming legacy hierarchy",
+                log_error("Unexpected filesystem type %llx mounted on /sys/fs/cgroup/systemd, assuming legacy hierarchy",
                             (unsigned long long) fs.f_type);
                 return -ENOMEDIUM;
             }
