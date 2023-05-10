@@ -29,6 +29,7 @@ static int timer_handler(sd_event_source *s, uint64_t usec, void *userdata){
 
     assert(s);
     assert(userdata);
+    (void) usec;
 
     struct se_timer_arg *arg = (struct se_timer_arg *)userdata;
     int rc = 0;
@@ -476,6 +477,8 @@ static int io_timer_handler(sd_event_source *s, uint64_t usec, void *userdata){
 
     assert(s);
     assert(userdata);
+
+    (void) usec;
 
     struct msg_stream *this_stream = (struct msg_stream *)userdata;
 

@@ -56,6 +56,8 @@ static int sb_bus_call_cb(sd_bus_message *m, void *userdata, sd_bus_error *ret_e
     assert(m);
     assert(userdata);
 
+    (void) ret_error;
+
     struct sb_bus_call_arg *arg = userdata;
 
     assert(arg->result == NULL);
@@ -419,6 +421,8 @@ static int sb_sd_wait_for_job_bus_disconnected(sd_bus_message *m, void *userdata
     assert(m);
     assert(userdata);
 
+    (void) ret_error;
+
     struct sb_sd_wait_for_job_arg *arg = userdata;
 
     assert(arg->result == NULL);
@@ -440,6 +444,8 @@ static int sb_sd_wait_for_job_job_removed(sd_bus_message *m, void *userdata, sd_
 
     assert(m);
     assert(userdata);
+
+    (void) ret_error;
 
     struct sb_sd_wait_for_job_arg *arg = userdata;
 
@@ -498,6 +504,8 @@ static int sb_sd_wait_for_job_signal_match_installed(sd_bus_message *m, void *us
 
     assert(m);
     assert(userdata);
+
+    (void) ret_error;
 
     struct sb_sd_wait_for_job_arg *arg = userdata;
     if(sd_bus_message_is_method_error(m, NULL)){

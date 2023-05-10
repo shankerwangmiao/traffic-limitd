@@ -23,6 +23,8 @@ static int unix_server_listen_handler(sd_event_source *s, int fd, uint32_t reven
     assert(s);
     assert(userdata);
 
+    (void) revents;
+
     struct listen_handler_arg *arg = (struct listen_handler_arg *)userdata;
     void (*handler)(int fd) = arg->handler;
 

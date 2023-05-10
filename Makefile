@@ -28,7 +28,7 @@ OBJS := $(C_OBJS) $(ASM_OBJS) $(BPF_OBJS)
 
 INCS := -I./include
 
-CFLAGS += -Wall -Werror -g -Wextra -Wstrict-prototypes -Wno-unused-parameter -Wno-deprecated-declarations $(INCS) -I$(OBJ_DIR)/generated/include
+CFLAGS += -Wall -Werror -g -O2 -Wextra -Wstrict-prototypes $(INCS) -I$(OBJ_DIR)/generated/include
 
 LDLIBS += $(shell pkg-config --cflags --libs libsystemd libbpf)
 

@@ -128,6 +128,7 @@ static enum parse_suffix_result parseTime(const char *string, int64_t *out_time)
 static volatile int timeout_triggered = 0;
 
 static void timeout_handler(int sig){
+    (void) sig;
     timeout_triggered = 1;
 }
 
@@ -209,7 +210,7 @@ int main(int argc, char *argv[]){
         return 1;
     }
     control_sock_addr.sun_family = AF_UNIX;
-    strncpy(control_sock_addr.sun_path, options.control_socket, sizeof(control_sock_addr.sun_path));
+    strncpy(control_sock_addr.sun_path, options.control_socket, sizeof(control_sock_addr.sun_path) - 1);
     rc = connect(control_sock_fd, (struct sockaddr *)&control_sock_addr, sizeof(control_sock_addr));
     if(rc < 0){
         perror("unable to connect to control socket");

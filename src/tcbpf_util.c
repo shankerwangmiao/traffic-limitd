@@ -472,7 +472,7 @@ static int libbpf_print(enum libbpf_print_level level, const char *fmt, va_list 
     }
     int length = strlen(fmt);
     char buf[length + 1];
-    strncpy(buf, fmt, length + 1);
+    strcpy(buf, fmt);
 
     if(length > 0){
         for(int i = length - 1; i >= 0; i--){

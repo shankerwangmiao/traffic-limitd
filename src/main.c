@@ -39,6 +39,8 @@ static struct daemon g_daemon = {0};
 static int g_nr_tasks = 0;
 
 static int exit_req_handler(sd_event_source *s, const struct signalfd_siginfo *si, void *userdata){
+    (void) si;
+    (void) userdata;
     sd_event_source_disable_unref(s);
     if(g_exit_req == NOEXIT){
         g_exit_req = EXIT_REQ_SENT;
@@ -48,6 +50,9 @@ static int exit_req_handler(sd_event_source *s, const struct signalfd_siginfo *s
 }
 
 static int sleep_timer_handler(sd_event_source *s, uint64_t usec, void *userdata){
+    (void) s;
+    (void) usec;
+    (void) userdata;
     if(is_task_empty()){
         log_trace("No job, exit daemon");
         int rc = sd_event_exit(g_daemon.event_loop, 0);
@@ -402,6 +407,7 @@ static void client_handler(int fd){
 
 int main(int argc, char *argv[]) {
     (void)argv;
+    (void)argc;
 
     if(getenv("SYSTEMD")){
         log_set_systemd(true);

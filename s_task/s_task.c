@@ -246,5 +246,6 @@ void s_task_fcontext_entry(transfer_t arg) {
 #endif
 
 void *s_task_get_current_stack(__async__) {
+    (void)__await__;
     return g_globals.current_task;
 }
