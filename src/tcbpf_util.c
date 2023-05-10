@@ -11,6 +11,9 @@
 #include <bpf/libbpf.h>
 #include <linux/if_ether.h>
 #include <arpa/inet.h>
+#include <linux/bpf.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 
 
 #include <log.h>
@@ -485,10 +488,11 @@ static int libbpf_print(enum libbpf_print_level level, const char *fmt, va_list 
     return 0;
 }
 
-int open_and_load_bpf_obj(void){
+int open_and_load_bpf_obj(int max_tasks){
     int rc = 0;
 
     assert(cg_rl_skel == NULL);
+    assert(max_tasks > 0);
 
     libbpf_set_print(libbpf_print);
 
@@ -499,8 +503,12 @@ int open_and_load_bpf_obj(void){
         goto fail;
     }
 
+    max_tasks += (max_tasks + 7) / 8;
+
     bpf_program__set_type(cg_rl_skel->progs.cgroup_rate_limit, BPF_PROG_TYPE_SCHED_CLS);
     bpf_program__set_expected_attach_type(cg_rl_skel->progs.cgroup_rate_limit, 0);
+    bpf_map__set_max_entries(cg_rl_skel->maps.rate_limit_map, max_tasks);
+    bpf_map__set_max_entries(cg_rl_skel->maps.rate_limit_priv_map, max_tasks);
 
     rc = cgroup_rate_limit__load(cg_rl_skel);
     if(rc < 0){
@@ -523,4 +531,67 @@ int close_bpf_obj(void){
     cgroup_rate_limit__destroy(cg_rl_skel);
     cg_rl_skel = NULL;
     return 0;
+}
+
+#define offsetofend(TYPE, FIELD) \
+    (offsetof(TYPE, FIELD) + sizeof(((TYPE *)0)->FIELD))
+
+static inline __u64 ptr_to_u64(const void *ptr){
+    return (__u64) (uintptr_t) ptr;
+}
+
+static inline int sys_bpf(enum bpf_cmd cmd, union bpf_attr *attr, unsigned int size){
+    return syscall(SYS_bpf, cmd, attr, size);
+}
+
+
+static int bpf_map_update_elem(int fd, const void *key, const void *value, __u64 flags){
+    union bpf_attr attr = {
+        .map_fd = fd,
+        .key = ptr_to_u64(key),
+        .value = ptr_to_u64(value),
+        .flags = flags,
+    };
+    int rc;
+    rc = sys_bpf(BPF_MAP_UPDATE_ELEM, &attr, sizeof(attr));
+    if(rc < 0){
+        rc = -errno;
+    }
+    return rc;
+}
+
+static int bpf_map_delete_elem(int fd, const void *key){
+    union bpf_attr attr = {
+        .map_fd = fd,
+        .key = ptr_to_u64(key),
+    };
+    int rc;
+    rc = sys_bpf(BPF_MAP_DELETE_ELEM, &attr, sizeof(attr));
+    if(rc < 0){
+        rc = -errno;
+    }
+    return rc;
+}
+
+
+int cgroup_rate_limit_set(uint64_t cg_id, const struct rate_limit *limit){
+    int rc = 0;
+    rc = bpf_map_update_elem(bpf_map__fd(cg_rl_skel->maps.rate_limit_map), &cg_id, limit, BPF_ANY);
+    if(rc < 0){
+        log_error("bpf_map_update_elem() failed: %s", strerror(-rc));
+        goto fail;
+    }
+fail:
+    return rc;
+}
+
+int cgroup_rate_limit_unset(uint64_t cg_id){
+    int rc = 0;
+    rc = bpf_map_delete_elem(bpf_map__fd(cg_rl_skel->maps.rate_limit_map), &cg_id);
+    if(rc < 0){
+        log_error("bpf_map_delete_elem() failed: %s", strerror(-rc));
+        goto fail;
+    }
+fail:
+    return rc;
 }

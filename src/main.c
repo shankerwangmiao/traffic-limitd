@@ -128,6 +128,17 @@ static void decrease_nr_tasks(void *dummy){
     }
 }
 
+static void clear_rate_limit(void *data){
+    uint64_t cgroup_id = (uint64_t)(uintptr_t)data;
+    int rc = 0;
+    rc = cgroup_rate_limit_unset(cgroup_id);
+    if(rc < 0){
+        log_error("cgroup_rate_limit_unset(%d) failed: %s (ignored)", cgroup_id, strerror(-rc));
+    }else{
+        log_trace("cgroup_rate_limit_unset(%d) succeed", cgroup_id);
+    }
+}
+
 static void client_handler_async(__async__, void *arg){
     enum {
         INT_IO_ERR = 1,
@@ -231,6 +242,14 @@ static void client_handler_async(__async__, void *arg){
     }
     alog_trace("cgroup_id=%llu", cgroup_id);
 
+    rc = cgroup_rate_limit_set(cgroup_id, &(struct rate_limit){.byte_rate = 0, .packet_rate = 0});
+    if(rc < 0){
+        alog_error("cgroup_rate_limit_set failed: %s", strerror(-rc));
+        goto err_close_stream;
+    }
+
+    se_task_register_memory_to_free(__await__, (void *)(uintptr_t) cgroup_id, clear_rate_limit);
+
     #define excepted_msg_len (sizeof(struct rate_limit_msg) + sizeof(struct rate_limit_req_attr))
     char _buf[excepted_msg_len];
     rc = msg_stream_read(__await__, stream, _buf, excepted_msg_len, MAX_IO_USEC);
@@ -265,7 +284,13 @@ static void client_handler_async(__async__, void *arg){
     #undef excepted_msg_len
     //disable interrupt from stream
     msg_stream_reg_interrupt(__await__, stream, 0);
-    /*TODO: handle speedlimit*/
+
+    rc = cgroup_rate_limit_set(cgroup_id, &attr->limit);
+    if(rc < 0){
+        alog_error("cgroup_rate_limit_set failed: %s", strerror(-rc));
+        goto err_close_stream;
+    }
+
     alog_info("will start task with ratelimit bps=%ld, pps=%ld", attr->limit.byte_rate, attr->limit.packet_rate);
     write_rate_limit_log(__await__, stream, "Start task with ratelimit bps=%ld, pps=%ld", attr->limit.byte_rate, attr->limit.packet_rate);
     write_rate_limit_msg(__await__, stream, RATE_LIMIT_PROCEED, 0);
@@ -352,7 +377,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    rc = open_and_load_bpf_obj();
+    rc = open_and_load_bpf_obj(MAX_NR_TASKS);
     if(rc < 0){
         log_error("open_and_load_bpf_obj failed: %s", strerror(-rc));
         return -1;
