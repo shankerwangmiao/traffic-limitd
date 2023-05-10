@@ -13,6 +13,7 @@
 #include <cgroup_util.h>
 #include <s_task.h>
 #include <se_libs.h>
+#include <tcbpf_util.h>
 #include "daemon.h"
 
 
@@ -327,6 +328,12 @@ int main(int argc, char *argv[]) {
         log_set_systemd(true);
     }
 
+    const char *ifnames = getenv("IFACES");
+    if(!ifnames){
+        log_error("environment variable IFACES should be set");
+        return -1;
+    }
+
     s_task_init_system();
 
     log_trace("init_sys");
@@ -342,6 +349,12 @@ int main(int argc, char *argv[]) {
     rc = cg_find_unified();
     if(rc < 0){
         log_error("cg_find_unified failed: %s", strerror(-rc));
+        return -1;
+    }
+
+    rc = tc_setup_inferface(ifnames);
+    if(rc < 0){
+        log_error("tc_setup_inferface failed: %s", strerror(-rc));
         return -1;
     }
 

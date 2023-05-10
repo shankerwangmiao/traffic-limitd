@@ -6,7 +6,7 @@ S_TASK_ASM_SRC = \
 	s_task/jump_gas.S \
 	s_task/make_gas.S
 
-DAEMON_SRC = src/main.c src/se_libs.c src/log.c src/unix_sock.c src/sd_bus.c src/cgroup_util.c
+DAEMON_SRC = src/main.c src/se_libs.c src/log.c src/unix_sock.c src/sd_bus.c src/cgroup_util.c src/tcbpf_util.c src/rtnl_util.c
 CLIENT_SRC = src/client.c
 
 OBJ_DIR = objs
