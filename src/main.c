@@ -20,12 +20,12 @@
 static const size_t STACK_SIZE = 256*1024;
 static const int NO_JOB_SLEEP_DELAY = 20 * 1000 * 1000;
 
-/*
 static const int MAX_IO_USEC = 300 * 1000;
 static const int MAX_NR_TASKS = 1000;
-*/
+/*
 static const int MAX_IO_USEC = 10 * 300 * 1000;
 static const int MAX_NR_TASKS = 2;
+*/
 
 static enum{
     NOEXIT = 0,
