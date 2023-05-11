@@ -1,0 +1,12 @@
+Description: add patch for loading on focal
+
+---
+
+--- traffic-limitd-0.0.1.orig/src/cgroup_rate_limit.bpf.c
++++ traffic-limitd-0.0.1/src/cgroup_rate_limit.bpf.c
+@@ -109,4 +109,4 @@ long cgroup_rate_limit(struct __sk_buff
+ }
+ 
+ 
+-char __license[] SEC("license") = "MIT";
++char __license[] SEC("license") = "GPL";

@@ -1,0 +1,49 @@
+Description: Polyfill libsystemd
+
+---
+
+--- traffic-limitd-0.0.1.orig/include/se_libs.h
++++ traffic-limitd-0.0.1/include/se_libs.h
+@@ -86,5 +86,42 @@ int start_transient_scope(__async__, sd_
+     }
+ DEF_SB_SD_UNIT_GET_STR_PROP(Unit, Id)
+ 
++#include<errno.h>
++static inline int sd_event_add_time_relative(
++		     sd_event *e,
++		     sd_event_source **ret,
++		     clockid_t clock,
++                     uint64_t usec,
++                     uint64_t accuracy,
++                     sd_event_time_handler_t callback,
++                     void *userdata) {
++	uint64_t t;
++	int r = sd_event_now(e, clock, &t);
++	if (r < 0)
++		return r;
++	if (usec >= UINT64_MAX - t)
++               return -EOVERFLOW;
++
++        return sd_event_add_time(e, ret, clock, t + usec, accuracy, callback, userdata);
++}
++
++static inline int sd_event_source_set_time_relative(sd_event_source *s, uint64_t usec) {
++        uint64_t t;
++        int r;
++	clockid_t clock;
++
++	r = sd_event_source_get_time_clock(s, &clock);
++	if (r < 0)
++		return r;
++
++        r = sd_event_now(sd_event_source_get_event(s), clock, &t);
++        if (r < 0)
++                return r;
++
++         if (usec >= UINT64_MAX - t)
++                return -EOVERFLOW;
++
++         return sd_event_source_set_time(s, t + usec);
++}
+ 
+ #endif /* defined(INC_SE_LIBS_H_) */
