@@ -1,2 +1,3 @@
 ./objs/traffic-limitd /usr/lib/traffic-limitd/
 ./objs/traffic-limit /usr/bin/
+./debian/grub/01_traffic-limitd.cfg /etc/default/grub.d

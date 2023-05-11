@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+  configure)
+    # Update grub configuration
+    if [ -e /boot/grub/grub.cfg ] && which update-grub >/dev/null 2>&1; then
+      update-grub || true
+    fi
+    ;;
+esac
+
+#DEBHELPER#
