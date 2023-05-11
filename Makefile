@@ -28,7 +28,9 @@ OBJS := $(C_OBJS) $(ASM_OBJS) $(BPF_OBJS)
 
 INCS := -I./include
 
-CFLAGS += -Wall -Werror -g -O2 -Wextra -Wstrict-prototypes $(INCS) -I$(OBJ_DIR)/generated/include
+COMMON_CFLAGS := -Wall -Werror -g -O2 -Wextra -Wstrict-prototypes $(INCS) -I$(OBJ_DIR)/generated/include
+
+CFLAGS += $(COMMON_CFLAGS)
 
 LDLIBS += $(shell pkg-config --cflags --libs libsystemd libbpf)
 
@@ -38,7 +40,7 @@ DEPDIR := .deps
 DEPFLAGS = -MT $@ -MMD -MP -MF $(OBJ_DIR)/$(DEPDIR)/$*.d
 
 COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) -c
-COMPILE.bpf = $(BPFCC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) -c
+COMPILE.bpf = $(BPFCC) $(DEPFLAGS) $(COMMON_CFLAGS) $(CPPFLAGS) -c
 
 HDR_GEN_TAG := $(OBJ_DIR)/.header_generated
 
