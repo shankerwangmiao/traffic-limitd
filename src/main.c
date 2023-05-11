@@ -159,7 +159,7 @@ static int get_Unit_cgroup_id(__async__, const char *unit, uint64_t *cgroup_id){
     }
     alog_trace("cgroup_path=%s", cgroup_path);
 
-    uint64_t this_cgroup_id;
+    uint64_t this_cgroup_id = 0;
     rc = cg_path_get_cgroupid(cgroup_path, &this_cgroup_id);
     if(rc < 0){
         alog_error("cg_path_get_cgroupid failed: %s", strerror(-rc));
