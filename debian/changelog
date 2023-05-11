@@ -1,4 +1,4 @@
-traffic-limitd (0.0.1-1) UNRELEASED; urgency=medium
+traffic-limitd (0.0.1-1) bullseye; urgency=medium
 
   * Init Release
 

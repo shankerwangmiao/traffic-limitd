@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Miao Wang <shankerwangmiao@gmail.com>
 Build-Depends: debhelper-compat (= 13),
                help2man,
-               bpftool,
+               bpftool | linux-tools-generic,
                libbpf-dev,
                libsystemd-dev,
                clang,
