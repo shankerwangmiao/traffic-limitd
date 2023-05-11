@@ -1,0 +1,28 @@
+Format: 1.8
+Date: Thu, 11 May 2023 07:40:00 +0800
+Source: traffic-limitd
+Binary: traffic-limitd traffic-limitd-dbgsym
+Architecture: amd64
+Version: 0.0.1-1
+Distribution: bullseye
+Urgency: medium
+Maintainer: Miao Wang <shankerwangmiao@gmail.com>
+Changed-By: Miao Wang <shankerwangmiao@gmail.com>
+Description:
+ traffic-limitd - Tool to start tasks with limited network bandwidth
+Changes:
+ traffic-limitd (0.0.1-1) bullseye; urgency=medium
+ .
+   * Init Release
+Checksums-Sha1:
+ 12b63f7f00e49959be9ecbc52fb1991ee77b7fdc 92860 traffic-limitd-dbgsym_0.0.1-1_amd64.deb
+ e6250641d0a0265cbc2e85f44c5201a9083905d4 5861 traffic-limitd_0.0.1-1_amd64.buildinfo
+ a60046b995ece3ee99ad3c00f65bcd256f1d394f 38976 traffic-limitd_0.0.1-1_amd64.deb
+Checksums-Sha256:
+ d427763a7b3bb0e878d75afe0dcb04e5698b4413480828d809436f4e7b139a1d 92860 traffic-limitd-dbgsym_0.0.1-1_amd64.deb
+ af1a8de5cc443a7a3ada1b6f6a37f4bbb95ea586586086c2e68a23d491510257 5861 traffic-limitd_0.0.1-1_amd64.buildinfo
+ fef3b886675768804e3052764619f4ffc9742421e2dcf8fd2af453bfe6ad3981 38976 traffic-limitd_0.0.1-1_amd64.deb
+Files:
+ 460cec9c3221ff81cedd756bdc0f03a5 92860 debug optional traffic-limitd-dbgsym_0.0.1-1_amd64.deb
+ e1f40750082cae3a3de2b9076ff1e801 5861 misc optional traffic-limitd_0.0.1-1_amd64.buildinfo
+ 943a07bc248929569f47a788571b043b 38976 misc optional traffic-limitd_0.0.1-1_amd64.deb

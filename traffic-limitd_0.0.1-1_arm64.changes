@@ -1,0 +1,37 @@
+Format: 1.8
+Date: Thu, 11 May 2023 07:40:00 +0800
+Source: traffic-limitd
+Binary: traffic-limitd traffic-limitd-dbgsym
+Architecture: source arm64
+Version: 0.0.1-1
+Distribution: bullseye
+Urgency: medium
+Maintainer: Miao Wang <shankerwangmiao@gmail.com>
+Changed-By: Miao Wang <shankerwangmiao@gmail.com>
+Description:
+ traffic-limitd - Tool to start tasks with limited network bandwidth
+Changes:
+ traffic-limitd (0.0.1-1) bullseye; urgency=medium
+ .
+   * Init Release
+Checksums-Sha1:
+ c0bdbd718264dda52a07938bcd640970cdb39869 1114 traffic-limitd_0.0.1-1.dsc
+ 990aac08b2a018ab3187258db8a4b73abf70f47a 52590 traffic-limitd_0.0.1.orig.tar.gz
+ e6bf95bb31f50ab413542390504b6a0e2d05cf2c 2288 traffic-limitd_0.0.1-1.debian.tar.xz
+ a52d8aa17a1de747e84a66f5462242ae9fbcde7b 94132 traffic-limitd-dbgsym_0.0.1-1_arm64.deb
+ a277a1f20a2c130834fa8d1d6301f0747790a7af 6008 traffic-limitd_0.0.1-1_arm64.buildinfo
+ 97c70911286dba771e2f8f7717ff62ebbad73d24 36180 traffic-limitd_0.0.1-1_arm64.deb
+Checksums-Sha256:
+ f595af9f10bbafa93f4b369aa030a406a3afc99cab34f2867bf76777bb5a38e7 1114 traffic-limitd_0.0.1-1.dsc
+ 3bd64270828d3d89deb82d8337ad67a1e4b1c7e3bdd06780326e336d893f47fe 52590 traffic-limitd_0.0.1.orig.tar.gz
+ 51cd497e8d774f81e6c1d13ac8a5b5fb582c3727da2fa779f0467828e685797e 2288 traffic-limitd_0.0.1-1.debian.tar.xz
+ fce583b2e456a6ec6cd8e7c08981a4f2d5112dcf5b2e46ffbdc1136e4e11b2d9 94132 traffic-limitd-dbgsym_0.0.1-1_arm64.deb
+ 2b505b4d39850a765e5070468ac017ebd8ca2a4cbd3fed5484d0accc5505d95d 6008 traffic-limitd_0.0.1-1_arm64.buildinfo
+ ae318350a3e7c969fafbe1f2f86f5449192111f25704422504b021ce3da0b034 36180 traffic-limitd_0.0.1-1_arm64.deb
+Files:
+ 741fa1a91306aef6b6c2515ea628cafb 1114 misc optional traffic-limitd_0.0.1-1.dsc
+ 788413ee1b966350a1bf42a02d8a1733 52590 misc optional traffic-limitd_0.0.1.orig.tar.gz
+ 6e489f69df20066d57342b36461c951a 2288 misc optional traffic-limitd_0.0.1-1.debian.tar.xz
+ 1cb33d0f4a361249347df056b41e2c42 94132 debug optional traffic-limitd-dbgsym_0.0.1-1_arm64.deb
+ d35e4e48c9879782f8510ab737575f70 6008 misc optional traffic-limitd_0.0.1-1_arm64.buildinfo
+ 93baec6113d47e8fc8fb8a7e98018889 36180 misc optional traffic-limitd_0.0.1-1_arm64.deb
