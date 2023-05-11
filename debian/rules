@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+include /usr/share/dpkg/default.mk
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	dh_auto_build
+	help2man --no-info --help-option="-h" --version-string="$(DEB_VERSION_UPSTREAM)" --name="Start task with limited network bandwidth" ./objs/client > ./objs/traffic-limit.1
+
+override_dh_auto_install:
+	mv objs/client objs/traffic-limit
+	mv objs/main objs/traffic-limitd

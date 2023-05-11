@@ -1,0 +1,8 @@
+[Unit]
+Description=Daemon for limit network bandwidth socket
+
+[Socket]
+ListenSequentialPacket=/run/traffic-limitd.sock
+
+[Install]
+WantedBy=sockets.target

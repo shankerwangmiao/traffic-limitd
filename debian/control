@@ -1,0 +1,23 @@
+Source: traffic-limitd
+Section: misc
+Priority: optional
+Maintainer: Miao Wang <shankerwangmiao@gmail.com>
+Build-Depends: debhelper-compat (= 13),
+               help2man,
+               bpftool,
+               libbpf-dev,
+               libsystemd-dev,
+               clang,
+               pkg-config,
+Standards-Version: 4.6.2
+Homepage: https://github.com/shankerwangmiao/traffic-limitd
+Vcs-Git: https://github.com/shankerwangmiao/traffic-limitd.git
+Vcs-Browser: https://github.com/shankerwangmiao/traffic-limitd
+Rules-Requires-Root: no
+
+Package: traffic-limitd
+Architecture: any
+Depends: systemd, ${misc:Depends}, ${shlibs:Depends},
+Description: Tool to start tasks with limited network bandwidth
+ This tool can be used for normal users to start tasks with limited
+ network bandwidth.

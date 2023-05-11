@@ -1,0 +1,20 @@
+[Unit]
+Description=Daemon for limit network bandwidth
+Requires=traffic-limitd.socket
+After=network-online.target
+RefuseManualStart=yes
+
+[Service]
+EnvironmentFile=/etc/default/traffic-limitd
+Environment=SYSTEMD=1
+ExecStart=/usr/lib/traffic-limitd/traffic-limitd
+Type=simple
+Restart=on-failure
+NonBlocking=yes
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_BPF
+NoNewPrivileges=yes
+LimitMEMLOCK=infinity
+ProtectSystem=strict
+PrivateTmp=yes
+MemoryMax=512M
+TasksMax=2

@@ -1,0 +1,6 @@
+# Default settings for traffic-limitd
+# This file will be read by traffic-limitd.Service
+
+# Enable interfaces, separated by commas
+
+IFACES="eth0"

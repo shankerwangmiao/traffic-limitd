@@ -1,0 +1,2 @@
+./objs/traffic-limitd /usr/lib/traffic-limitd/
+./objs/traffic-limit /usr/bin/
