@@ -3,6 +3,20 @@
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 include /usr/share/dpkg/default.mk
 
+ifeq ($(shell dpkg-vendor --derives-from Ubuntu && echo yes),yes)
+# On Ubuntu, the `bpftool` in path is a shell wrapper pointing at
+# the binary corresponding to runtime kernel version.
+#
+# We do not know the kernel version being used on the system building
+# this package, and for the build we only need the tool to generate
+# skeleton code.
+#
+# If /usr/lib/linux-tools/*/bpftool exists, locate the most recent
+# version and point to that, otherwise `bpftool` from PATH will be
+# used.
+export BPFTOOL=$(shell find /usr/lib/linux-tools -name bpftool -executable -print | sort -nr | head -1)
+endif
+
 %:
 	dh $@
 

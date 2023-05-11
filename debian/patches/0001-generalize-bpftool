@@ -1,0 +1,21 @@
+Generalize bpftool
+
+--- traffic-limitd-0.0.1.orig/Makefile
++++ traffic-limitd-0.0.1/Makefile
+@@ -41,6 +41,7 @@ DEPFLAGS = -MT $@ -MMD -MP -MF $(OBJ_DIR
+ 
+ COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) -c
+ COMPILE.bpf = $(BPFCC) $(DEPFLAGS) $(COMMON_CFLAGS) $(CPPFLAGS) -c
++BPFTOOL ?= bpftool
+ 
+ HDR_GEN_TAG := $(OBJ_DIR)/.header_generated
+ 
+@@ -51,7 +52,7 @@ $(BPF_OBJS) : $(OBJ_DIR)/%.o : %.bpf.c $
+ 	$(COMPILE.bpf) -o $@ $<
+ $(BPF_GEN_HEADERS) : $(OBJ_DIR)/generated/include/%.skel.h : $(OBJ_DIR)/src/%.o
+ 	mkdir -p $(dir $@)
+-	bpftool gen skeleton $< > $@
++	$(BPFTOOL) gen skeleton $< > $@
+ $(C_OBJS) : $(OBJ_DIR)/%.o : %.c $(OBJ_DIR)/$(DEPDIR)/%.d $(HDR_GEN_TAG)
+ 	mkdir -p $(dir $@)
+ 	$(COMPILE.c) -o $@ $<
