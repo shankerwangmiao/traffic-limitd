@@ -1,0 +1,34 @@
+Format: 1.8
+Date: Thu, 15 May 2023 20:56:00 +0800
+Source: traffic-limitd
+Binary: traffic-limitd
+Architecture: source amd64
+Version: 0.0.1-2ubuntu20.04
+Distribution: focal-backports
+Urgency: medium
+Maintainer: Miao Wang <shankerwangmiao@gmail.com>
+Changed-By: Miao Wang <shankerwangmiao@gmail.com>
+Description:
+ traffic-limitd - Tool to start tasks with limited network bandwidth
+Changes:
+ traffic-limitd (0.0.1-2ubuntu20.04) focal-backports; urgency=medium
+ .
+   * Port to ubuntu focal
+Checksums-Sha1:
+ 40b191a0cce28f003ce0e619eab239eea371c7ab 1208 traffic-limitd_0.0.1-2ubuntu20.04.dsc
+ 13371efd3d7fb5e76eb41c0f14cfce67bc7d58d1 4040 traffic-limitd_0.0.1-2ubuntu20.04.debian.tar.xz
+ 40cf4351739a890b3e95fd8b7f5a375364e7ff54 95016 traffic-limitd-dbgsym_0.0.1-2ubuntu20.04_amd64.ddeb
+ f65573f17cad2f377556c4f4f74dc0279d2ddbe4 7603 traffic-limitd_0.0.1-2ubuntu20.04_amd64.buildinfo
+ bbdd15ce3139d5316d72eb21b6af9d4033a7a3ad 40064 traffic-limitd_0.0.1-2ubuntu20.04_amd64.deb
+Checksums-Sha256:
+ 1e8e0346016a0a2a21ee12ee730cf356afdbde02af11bd50aa3e1e3a0e1ed027 1208 traffic-limitd_0.0.1-2ubuntu20.04.dsc
+ 8baa0dab077279cf713d1030c880a97e3a7078d3b2780f49c245b65fd858c65e 4040 traffic-limitd_0.0.1-2ubuntu20.04.debian.tar.xz
+ 935805085ffe94c4ec806dd6a09e95358c12fb07770685d54611b7efcf5f7a12 95016 traffic-limitd-dbgsym_0.0.1-2ubuntu20.04_amd64.ddeb
+ 7b42de50a3f9aaf42c2879df41efe432f05a7e0ce8f7ff32bb22f3e4fc264845 7603 traffic-limitd_0.0.1-2ubuntu20.04_amd64.buildinfo
+ 1bc7281eb62ca8da1bd9f08d0c6f6f132f39e27decc68acbe1e41c4fd3fc7111 40064 traffic-limitd_0.0.1-2ubuntu20.04_amd64.deb
+Files:
+ e869d5fa0571100ff8562cc12d4ea829 1208 misc optional traffic-limitd_0.0.1-2ubuntu20.04.dsc
+ f35ec4d2415054d2c2661dcdafaa877c 4040 misc optional traffic-limitd_0.0.1-2ubuntu20.04.debian.tar.xz
+ b3b0bffb6d6eba3121d128f202648a8c 95016 debug optional traffic-limitd-dbgsym_0.0.1-2ubuntu20.04_amd64.ddeb
+ e35fb575fcaf2702aa9b31c9919badf7 7603 misc optional traffic-limitd_0.0.1-2ubuntu20.04_amd64.buildinfo
+ 8329bce6ea0bd64de2c2510f8c3b7f98 40064 misc optional traffic-limitd_0.0.1-2ubuntu20.04_amd64.deb

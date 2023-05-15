@@ -2,32 +2,31 @@ Format: 1.0
 Source: traffic-limitd
 Binary: traffic-limitd traffic-limitd-dbgsym
 Architecture: amd64 source
-Version: 0.0.1-1ubuntu22.04
+Version: 0.0.1-2ubuntu22.04
 Checksums-Md5:
- 43decc9a108ac643d19eb13e9b1c30ff 1158 traffic-limitd_0.0.1-1ubuntu22.04.dsc
- cca7946faf76aa3204a8c2394ffd6774 103184 traffic-limitd-dbgsym_0.0.1-1ubuntu22.04_amd64.ddeb
- deaa31d79901626b06501afd082d0c67 39538 traffic-limitd_0.0.1-1ubuntu22.04_amd64.deb
+ 9a7a3c0a769b71bf23248038776cf1fc 1158 traffic-limitd_0.0.1-2ubuntu22.04.dsc
+ 10de21f358de2a4b69bc622e946d1446 103204 traffic-limitd-dbgsym_0.0.1-2ubuntu22.04_amd64.ddeb
+ f180ef5e06a13701e805b4bcbd2d4059 39592 traffic-limitd_0.0.1-2ubuntu22.04_amd64.deb
 Checksums-Sha1:
- d3910ff8c3501b953051a21dde45c31a6b76326f 1158 traffic-limitd_0.0.1-1ubuntu22.04.dsc
- f7dfb07e5a90a12fef6d7b1d2b577a744999e274 103184 traffic-limitd-dbgsym_0.0.1-1ubuntu22.04_amd64.ddeb
- bb4102d619fed0f2759267be19c98316823870cd 39538 traffic-limitd_0.0.1-1ubuntu22.04_amd64.deb
+ ad57ee78a57357473abd155ab4249a8e01862830 1158 traffic-limitd_0.0.1-2ubuntu22.04.dsc
+ 63c41f3336bf235a1377a1bf0bb772cbaccb2654 103204 traffic-limitd-dbgsym_0.0.1-2ubuntu22.04_amd64.ddeb
+ d01f4ab2c05a7443539dee37d886076fdac5a94a 39592 traffic-limitd_0.0.1-2ubuntu22.04_amd64.deb
 Checksums-Sha256:
- f2501990159166194cb534f8c7b0cf8aacfb0c60fd0586573ead9d4d9d6a2372 1158 traffic-limitd_0.0.1-1ubuntu22.04.dsc
- 1c28d74b9692e6ece6a8f28cbb3d563f6dd7dac120c56931263a809257dfcae3 103184 traffic-limitd-dbgsym_0.0.1-1ubuntu22.04_amd64.ddeb
- d79a3e4eb67babcaefb2bed638ed454d16e7117030af0ee13d6e39ae8f4c5785 39538 traffic-limitd_0.0.1-1ubuntu22.04_amd64.deb
+ d91ecce4af43575e6d8d7caf93dd51080030109fb4ebff5eb48b79953dd7d32c 1158 traffic-limitd_0.0.1-2ubuntu22.04.dsc
+ 3c69718e285c2f5b4ce0e56e7a0c7b8e7fb73ce27b24a38ead464acb9aa13e47 103204 traffic-limitd-dbgsym_0.0.1-2ubuntu22.04_amd64.ddeb
+ 62ac757941ac5d60e3a00c41347c71365fe6d11ae73592d127cee141f99ee168 39592 traffic-limitd_0.0.1-2ubuntu22.04_amd64.deb
 Build-Origin: Ubuntu
 Build-Architecture: amd64
-Build-Date: Thu, 11 May 2023 11:06:56 +0800
+Build-Date: Mon, 15 May 2023 20:49:21 +0800
 Build-Tainted-By:
  merged-usr-via-aliased-dirs
- usr-local-has-libraries
  usr-local-has-programs
 Installed-Build-Depends:
  autoconf (= 2.71-2),
  automake (= 1:1.16.5-1.3),
  autopoint (= 0.21-4ubuntu4),
  autotools-dev (= 20220109.1),
- base-files (= 12ubuntu4.2),
+ base-files (= 12ubuntu4.3),
  base-passwd (= 3.5.52build1),
  bash (= 5.1-6ubuntu1),
  binutils (= 2.38-4ubuntu2.1),
@@ -50,7 +49,7 @@ Installed-Build-Depends:
  dh-autoreconf (= 20),
  dh-strip-nondeterminism (= 1.13.0-1),
  diffutils (= 1:3.8-0ubuntu2),
- distro-info-data (= 0.52ubuntu0.2),
+ distro-info-data (= 0.52ubuntu0.4),
  dpkg (= 1.21.1ubuntu2.1),
  dpkg-dev (= 1.21.1ubuntu2.1),
  dwz (= 0.14-1build2),
@@ -58,7 +57,6 @@ Installed-Build-Depends:
  findutils (= 4.8.0-1ubuntu3),
  g++ (= 4:11.2.0-1ubuntu1),
  g++-11 (= 11.3.0-1ubuntu1~22.04),
- gawk (= 1:5.1.0-1build3),
  gcc (= 4:11.2.0-1ubuntu1),
  gcc-11 (= 11.3.0-1ubuntu1~22.04),
  gcc-11-base (= 11.3.0-1ubuntu1~22.04),
@@ -71,7 +69,6 @@ Installed-Build-Depends:
  help2man (= 1.49.1),
  hostname (= 3.23ubuntu2),
  init-system-helpers (= 1.62),
- install-info (= 6.8-4build1),
  intltool-debian (= 0.35.0+20060710.5),
  lib32gcc-s1 (= 12.1.0-2ubuntu1~22.04),
  lib32stdc++6 (= 12.1.0-2ubuntu1~22.04),
@@ -121,7 +118,7 @@ Installed-Build-Depends:
  libgcrypt20 (= 1.9.4-3ubuntu3),
  libgdbm-compat4 (= 1.23-1),
  libgdbm6 (= 1.23-1),
- libglib2.0-0 (= 2.72.4-0ubuntu1),
+ libglib2.0-0 (= 2.72.4-0ubuntu2),
  libgmp10 (= 2:6.2.1+dfsg-3ubuntu1),
  libgomp1 (= 12.1.0-2ubuntu1~22.04),
  libgpg-error0 (= 1.43-3),
@@ -161,8 +158,8 @@ Installed-Build-Depends:
  libperl5.34 (= 5.34.0-3ubuntu1.1),
  libpipeline1 (= 1.5.5-1),
  libpython3-stdlib (= 3.10.6-1~22.04),
- libpython3.10-minimal (= 3.10.6-1~22.04.2),
- libpython3.10-stdlib (= 3.10.6-1~22.04.2),
+ libpython3.10-minimal (= 3.10.6-1~22.04.2ubuntu1),
+ libpython3.10-stdlib (= 3.10.6-1~22.04.2ubuntu1),
  libquadmath0 (= 12.1.0-2ubuntu1~22.04),
  libreadline8 (= 8.1.2-1),
  libseccomp2 (= 2.5.3-2ubuntu2),
@@ -171,7 +168,7 @@ Installed-Build-Depends:
  libslang2 (= 2.3.2-5build4),
  libsmartcols1 (= 2.37.2-4ubuntu3),
  libsqlite3-0 (= 3.37.2-2ubuntu0.1),
- libssl3 (= 3.0.2-0ubuntu1.8),
+ libssl3 (= 3.0.2-0ubuntu1.9),
  libstdc++-11-dev (= 11.3.0-1ubuntu1~22.04),
  libstdc++6 (= 12.1.0-2ubuntu1~22.04),
  libsub-override-perl (= 0.09-2),
@@ -185,13 +182,13 @@ Installed-Build-Depends:
  libtsan0 (= 11.3.0-1ubuntu1~22.04),
  libubsan1 (= 12.1.0-2ubuntu1~22.04),
  libuchardet0 (= 0.0.7-1build2),
- libudev1 (= 249.11-0ubuntu3.6),
+ libudev1 (= 249.11-0ubuntu3.9),
  libunistring2 (= 1.0-1),
  libunwind8 (= 1.3.2-2build2),
  libuuid1 (= 2.37.2-4ubuntu3),
- libxml2 (= 2.9.13+dfsg-1ubuntu0.2),
+ libxml2 (= 2.9.13+dfsg-1ubuntu0.3),
  libzstd1 (= 1.4.8+dfsg-3build1),
- linux-libc-dev (= 5.15.0-60.66),
+ linux-libc-dev (= 5.15.0-71.78),
  linux-tools-5.15.0-71 (= 5.15.0-71.78),
  linux-tools-5.15.0-71-generic (= 5.15.0-71.78),
  linux-tools-common (= 5.15.0-71.78),
@@ -217,14 +214,14 @@ Installed-Build-Depends:
  po-debconf (= 1.0.21+nmu1),
  python3 (= 3.10.6-1~22.04),
  python3-minimal (= 3.10.6-1~22.04),
- python3.10 (= 3.10.6-1~22.04.2),
- python3.10-minimal (= 3.10.6-1~22.04.2),
+ python3.10 (= 3.10.6-1~22.04.2ubuntu1),
+ python3.10-minimal (= 3.10.6-1~22.04.2ubuntu1),
  readline-common (= 8.1.2-1),
  rpcsvc-proto (= 1.4.2-0ubuntu6),
  sed (= 4.8-1ubuntu2),
  sensible-utils (= 0.0.17),
  sysvinit-utils (= 3.01-1ubuntu1),
- tar (= 1.34+dfsg-1build3),
+ tar (= 1.34+dfsg-1ubuntu0.1.22.04.1),
  util-linux (= 2.37.2-4ubuntu3),
  xz-utils (= 5.2.5-2ubuntu1),
  zlib1g (= 1:1.2.11.dfsg-2ubuntu9.2),
@@ -232,5 +229,4 @@ Installed-Build-Depends:
 Environment:
  DEB_BUILD_OPTIONS="parallel=2"
  DEB_BUILD_PROFILES="noudeb"
- LANG="en_US.UTF-8"
- SOURCE_DATE_EPOCH="1683762000"
+ SOURCE_DATE_EPOCH="1684152900"

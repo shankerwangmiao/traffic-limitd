@@ -1,0 +1,34 @@
+Format: 1.8
+Date: Mon, 15 May 2023 19:58:00 +0800
+Source: traffic-limitd
+Binary: traffic-limitd traffic-limitd-dbgsym
+Architecture: source arm64
+Version: 0.0.1-2
+Distribution: bullseye
+Urgency: medium
+Maintainer: Miao Wang <shankerwangmiao@gmail.com>
+Changed-By: Miao Wang <shankerwangmiao@gmail.com>
+Description:
+ traffic-limitd - Tool to start tasks with limited network bandwidth
+Changes:
+ traffic-limitd (0.0.1-2) bullseye; urgency=medium
+ .
+   * Update man page
+Checksums-Sha1:
+ 6b4bf1a8a9619e985833e8590038bc035dc304be 1114 traffic-limitd_0.0.1-2.dsc
+ e97064ae171db412dd4aa93867ac77dcbc0d8699 2320 traffic-limitd_0.0.1-2.debian.tar.xz
+ 65e4b25bd2ec93bafe141df04950a67823aa3a95 94128 traffic-limitd-dbgsym_0.0.1-2_arm64.deb
+ 9914d40a5c3e0dc147821934e02a646020d07bb8 5988 traffic-limitd_0.0.1-2_arm64.buildinfo
+ 5aec58afe6eac042a312110e85c9f5118b6960a0 36220 traffic-limitd_0.0.1-2_arm64.deb
+Checksums-Sha256:
+ 27c7c5cbc78041832830f835de05b4d0c597b2a30ee1eb18952c4483cc55045c 1114 traffic-limitd_0.0.1-2.dsc
+ 684f1d7fc0830682457f7807f35de9374ddaf443bda9f1b35446d1a2f03e936e 2320 traffic-limitd_0.0.1-2.debian.tar.xz
+ 7470d86b38258512df78a272d704f717dd0b1f4e93fde2dad0f42aa6defc46fd 94128 traffic-limitd-dbgsym_0.0.1-2_arm64.deb
+ 37f01e0f51cecef16786c220522108387efe2eb6b03e9a660f6990b1c3b0a85c 5988 traffic-limitd_0.0.1-2_arm64.buildinfo
+ cef2a694019c7b06262c7a2683949ea28d7f9e43c51444208c8a12637f00f59e 36220 traffic-limitd_0.0.1-2_arm64.deb
+Files:
+ 692a6b9fb5763008fe7705f07854f527 1114 misc optional traffic-limitd_0.0.1-2.dsc
+ 185b05a620cf806fc754cdb8a948d3a6 2320 misc optional traffic-limitd_0.0.1-2.debian.tar.xz
+ fd18b440dd773d9995c46a8ae8d8f3c1 94128 debug optional traffic-limitd-dbgsym_0.0.1-2_arm64.deb
+ b1b550799377bba4c91d3d5e86fbea47 5988 misc optional traffic-limitd_0.0.1-2_arm64.buildinfo
+ ee10400f4d9b1e5b5d885fea1a168d1d 36220 misc optional traffic-limitd_0.0.1-2_arm64.deb

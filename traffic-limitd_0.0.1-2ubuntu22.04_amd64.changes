@@ -1,0 +1,35 @@
+Format: 1.8
+Date: Thu, 15 May 2023 20:15:00 +0800
+Source: traffic-limitd
+Binary: traffic-limitd
+Built-For-Profiles: noudeb
+Architecture: source amd64
+Version: 0.0.1-2ubuntu22.04
+Distribution: jammy
+Urgency: medium
+Maintainer: Miao Wang <shankerwangmiao@gmail.com>
+Changed-By: Miao Wang <shankerwangmiao@gmail.com>
+Description:
+ traffic-limitd - Tool to start tasks with limited network bandwidth
+Changes:
+ traffic-limitd (0.0.1-2ubuntu22.04) jammy; urgency=medium
+ .
+   * Port to ubuntu jammy
+Checksums-Sha1:
+ ad57ee78a57357473abd155ab4249a8e01862830 1158 traffic-limitd_0.0.1-2ubuntu22.04.dsc
+ d07b0dcd3fe8eba7b9dbc5b8dc9af27a5db9d478 3012 traffic-limitd_0.0.1-2ubuntu22.04.debian.tar.xz
+ 63c41f3336bf235a1377a1bf0bb772cbaccb2654 103204 traffic-limitd-dbgsym_0.0.1-2ubuntu22.04_amd64.ddeb
+ c5de0f091de5bf67554e8f71a79a16d5752e251f 8102 traffic-limitd_0.0.1-2ubuntu22.04_amd64.buildinfo
+ d01f4ab2c05a7443539dee37d886076fdac5a94a 39592 traffic-limitd_0.0.1-2ubuntu22.04_amd64.deb
+Checksums-Sha256:
+ d91ecce4af43575e6d8d7caf93dd51080030109fb4ebff5eb48b79953dd7d32c 1158 traffic-limitd_0.0.1-2ubuntu22.04.dsc
+ 81cae5d3a337a97532cd2169c87d452873e17b97c61eeb0115c6c1b17e7da8a9 3012 traffic-limitd_0.0.1-2ubuntu22.04.debian.tar.xz
+ 3c69718e285c2f5b4ce0e56e7a0c7b8e7fb73ce27b24a38ead464acb9aa13e47 103204 traffic-limitd-dbgsym_0.0.1-2ubuntu22.04_amd64.ddeb
+ ee1cebdc953bcd839c62e8bb9b841631ed9739383a52e9d47dd692a5776387f2 8102 traffic-limitd_0.0.1-2ubuntu22.04_amd64.buildinfo
+ 62ac757941ac5d60e3a00c41347c71365fe6d11ae73592d127cee141f99ee168 39592 traffic-limitd_0.0.1-2ubuntu22.04_amd64.deb
+Files:
+ 9a7a3c0a769b71bf23248038776cf1fc 1158 misc optional traffic-limitd_0.0.1-2ubuntu22.04.dsc
+ 7f848d0404076dfa0227440210ee9338 3012 misc optional traffic-limitd_0.0.1-2ubuntu22.04.debian.tar.xz
+ 10de21f358de2a4b69bc622e946d1446 103204 debug optional traffic-limitd-dbgsym_0.0.1-2ubuntu22.04_amd64.ddeb
+ 85ef52827127b1f3654e052f202ea454 8102 misc optional traffic-limitd_0.0.1-2ubuntu22.04_amd64.buildinfo
+ f180ef5e06a13701e805b4bcbd2d4059 39592 misc optional traffic-limitd_0.0.1-2ubuntu22.04_amd64.deb

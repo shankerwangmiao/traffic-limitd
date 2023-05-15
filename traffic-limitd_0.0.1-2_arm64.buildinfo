@@ -1,20 +1,23 @@
 Format: 1.0
 Source: traffic-limitd
 Binary: traffic-limitd traffic-limitd-dbgsym
-Architecture: amd64
-Version: 0.0.1-1
+Architecture: arm64 source
+Version: 0.0.1-2
 Checksums-Md5:
- 460cec9c3221ff81cedd756bdc0f03a5 92860 traffic-limitd-dbgsym_0.0.1-1_amd64.deb
- 943a07bc248929569f47a788571b043b 38976 traffic-limitd_0.0.1-1_amd64.deb
+ 692a6b9fb5763008fe7705f07854f527 1114 traffic-limitd_0.0.1-2.dsc
+ fd18b440dd773d9995c46a8ae8d8f3c1 94128 traffic-limitd-dbgsym_0.0.1-2_arm64.deb
+ ee10400f4d9b1e5b5d885fea1a168d1d 36220 traffic-limitd_0.0.1-2_arm64.deb
 Checksums-Sha1:
- 12b63f7f00e49959be9ecbc52fb1991ee77b7fdc 92860 traffic-limitd-dbgsym_0.0.1-1_amd64.deb
- a60046b995ece3ee99ad3c00f65bcd256f1d394f 38976 traffic-limitd_0.0.1-1_amd64.deb
+ 6b4bf1a8a9619e985833e8590038bc035dc304be 1114 traffic-limitd_0.0.1-2.dsc
+ 65e4b25bd2ec93bafe141df04950a67823aa3a95 94128 traffic-limitd-dbgsym_0.0.1-2_arm64.deb
+ 5aec58afe6eac042a312110e85c9f5118b6960a0 36220 traffic-limitd_0.0.1-2_arm64.deb
 Checksums-Sha256:
- d427763a7b3bb0e878d75afe0dcb04e5698b4413480828d809436f4e7b139a1d 92860 traffic-limitd-dbgsym_0.0.1-1_amd64.deb
- fef3b886675768804e3052764619f4ffc9742421e2dcf8fd2af453bfe6ad3981 38976 traffic-limitd_0.0.1-1_amd64.deb
+ 27c7c5cbc78041832830f835de05b4d0c597b2a30ee1eb18952c4483cc55045c 1114 traffic-limitd_0.0.1-2.dsc
+ 7470d86b38258512df78a272d704f717dd0b1f4e93fde2dad0f42aa6defc46fd 94128 traffic-limitd-dbgsym_0.0.1-2_arm64.deb
+ cef2a694019c7b06262c7a2683949ea28d7f9e43c51444208c8a12637f00f59e 36220 traffic-limitd_0.0.1-2_arm64.deb
 Build-Origin: Debian
-Build-Architecture: amd64
-Build-Date: Thu, 11 May 2023 04:04:11 +0000
+Build-Architecture: arm64
+Build-Date: Mon, 15 May 2023 11:59:36 +0000
 Installed-Build-Depends:
  autoconf (= 2.69-14),
  automake (= 1:1.16.3-2),
@@ -24,8 +27,8 @@ Installed-Build-Depends:
  base-passwd (= 3.5.51),
  bash (= 5.1-2+deb11u1),
  binutils (= 2.35.2-2),
+ binutils-aarch64-linux-gnu (= 2.35.2-2),
  binutils-common (= 2.35.2-2),
- binutils-x86-64-linux-gnu (= 2.35.2-2),
  bpftool (= 5.10.178-3),
  bsdextrautils (= 2.36.1-8+deb11u1),
  bsdutils (= 1:2.36.1-8+deb11u1),
@@ -33,7 +36,7 @@ Installed-Build-Depends:
  bzip2 (= 1.0.8-4),
  clang (= 1:11.0-51+nmu5),
  clang-11 (= 1:11.0.1-2),
- coreutils (= 8.32-4+b1),
+ coreutils (= 8.32-4),
  cpp (= 4:10.2.1-1),
  cpp-10 (= 10.2.1-6),
  dash (= 0.5.11+git20200708+dd9ef66-5),
@@ -62,8 +65,6 @@ Installed-Build-Depends:
  hostname (= 3.23),
  init-system-helpers (= 1.60),
  intltool-debian (= 0.35.0+20060710.5),
- lib32gcc-s1 (= 10.2.1-6),
- lib32stdc++6 (= 10.2.1-6),
  libacl1 (= 2.2.53-10),
  libarchive-zip-perl (= 1.68-1),
  libasan6 (= 10.2.1-6),
@@ -81,7 +82,6 @@ Installed-Build-Depends:
  libc-dev-bin (= 2.31-13+deb11u6),
  libc6 (= 2.31-13+deb11u6),
  libc6-dev (= 2.31-13+deb11u6),
- libc6-i386 (= 2.31-13+deb11u6),
  libcap-ng0 (= 0.7.9-2.2+b1),
  libcap2 (= 1:2.44-1),
  libcc1-0 (= 10.2.1-6),
@@ -143,7 +143,6 @@ Installed-Build-Depends:
  libpcre3 (= 2:8.39-13),
  libperl5.32 (= 5.32.1-4+deb11u2),
  libpipeline1 (= 1.5.3-1),
- libquadmath0 (= 10.2.1-6),
  libseccomp2 (= 2.5.1-1+deb11u1),
  libselinux1 (= 3.1-3),
  libsigsegv2 (= 2.13-1),
@@ -193,4 +192,4 @@ Installed-Build-Depends:
  zlib1g-dev (= 1:1.2.11.dfsg-2+deb11u2)
 Environment:
  DEB_BUILD_OPTIONS="parallel=2"
- SOURCE_DATE_EPOCH="1683762000"
+ SOURCE_DATE_EPOCH="1684151880"

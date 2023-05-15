@@ -12,6 +12,8 @@ apt-get install ./traffic-limitd_0.0.1-1xxxxxxx.deb
 
 最后用命令 `systemctl status traffic-limitd.socket` 确认控制端口是开放的。
 
+如果在 ubuntu focal (20.04) 上安装，则需要重新启动，以便使内核选项生效。
+
 在安装完毕后，用户可以使用下列命令来开启流量受限制的任务。
 
 ``` bash
@@ -28,3 +30,4 @@ traffic-limit --packet-rate xxm --bit-rate xxg python some_script.py
 - 本程序同时只能服务 1000 个任务，超过时会被直接拒绝；
 - 本程序后台进程崩溃时，所有的任务将被强行终止；
 - 当被启动的任务的主进程终止时，由主进程所启动所有进程，无论其父进程是否时该进程，如果尚未退出，将被强行终止。
+- 本程序和 `net_cls`、`net_prio` Cgroup Subsystem 冲突，因此需要禁用二者。在新版本操作系统中（Debian bullseye 及以上，Ubuntu jammy 22.04 及以上）中，这两个 Subsystem 已经被禁用，因此无须特殊设置。在较旧的操作系统中，安装时将会自动禁用，但是为使禁用生效，需要重新启动。
