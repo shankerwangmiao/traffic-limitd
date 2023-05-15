@@ -67,7 +67,11 @@ static void stdout_callback(log_Event *ev) {
         ev->func, ev->file, ev->line);
   }
   if(ev->task_id){
-    fprintf(ev->udata, "\x1b[90m[%lu]\x1b[0m ", ev->task_id);
+    if(L.systemd){
+      fprintf(ev->udata, "[%lu] ", ev->task_id);
+    }else{
+      fprintf(ev->udata, "\x1b[90m[%lu]\x1b[0m ", ev->task_id);
+    }
   }
   vfprintf(ev->udata, ev->fmt, ev->ap);
   fprintf(ev->udata, "\n");
