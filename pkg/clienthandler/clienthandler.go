@@ -28,31 +28,34 @@ import "C"
 
 import (
 	"bytes"
-	"time"
-
-	"golang.org/x/sys/unix"
-
-	"k8s.innull.com/trafficlimitd/pkg/server"
-	"k8s.io/klog/v2"
-
+	"context"
 	"encoding/json"
 	"sync"
+	"time"
 
 	criAnnotations "github.com/containerd/containerd/pkg/cri/annotations"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
+	"golang.org/x/sys/unix"
+	"k8s.io/klog/v2"
+
 	"k8s.innull.com/trafficlimitd/pkg/cgrouputils"
+	"k8s.innull.com/trafficlimitd/pkg/server"
+
+	types "k8s.innull.com/trafficlimitd/pkg/types"
 )
 
 type ClientHandler struct {
+	containerIDToCgroup sync.Map
+	fetcher             types.TrafficLimitInfoFetcher
 }
 
-var containerIDToCgroup sync.Map
-
-func New() *ClientHandler {
-	return &ClientHandler{}
+func New(fetcher types.TrafficLimitInfoFetcher) *ClientHandler {
+	return &ClientHandler{
+		fetcher: fetcher,
+	}
 }
 
-func (h *ClientHandler) Handle(conn *server.ClientConn) {
+func (h *ClientHandler) Handle(ctx context.Context, conn *server.ClientConn) {
 	defer conn.Conn.Close()
 	klog.Infof("Handling client from PID=%v", conn.PeerCredentials.Pid)
 	f, err := conn.Conn.File()
@@ -106,7 +109,7 @@ func (h *ClientHandler) Handle(conn *server.ClientConn) {
 
 			klog.V(2).Infof("Got cgroupv2 id for PID=%v, CtrID=%v: %v", conn.PeerCredentials.Pid, state.ID, cgrpID)
 
-			_, exists := containerIDToCgroup.LoadOrStore(state.ID, cgrpID)
+			_, exists := h.containerIDToCgroup.LoadOrStore(state.ID, cgrpID)
 			if exists {
 				klog.Errorf("Invalid request while handling client from PID=%v, dup container ID", conn.PeerCredentials.Pid)
 				goto FAIL
@@ -142,14 +145,26 @@ func (h *ClientHandler) Handle(conn *server.ClientConn) {
 				klog.Errorf("Invalid request while handling client from PID=%v, CtrID=%v: container name not found in annotations", conn.PeerCredentials.Pid, state.ID)
 				goto FAIL_RELEASE
 			}
-			klog.V(2).Infof("Got pod info for PID=%v, CtrID=%v: %v/%v/%v = %v", conn.PeerCredentials.Pid, state.ID, podNamespace, podName, containerName, podUUID)
+			klog.V(2).Infof("Got pod info from container annotations for PID=%v, CtrID=%v: %v/%v/%v = %v", conn.PeerCredentials.Pid, state.ID, podNamespace, podName, containerName, podUUID)
+
+			trafficLimitInfo, err := h.fetcher.GetTrafficLimitInfo(ctx, types.ContainerHandle{
+				PodUUID:       podUUID,
+				PodNamespace:  podNamespace,
+				PodName:       podName,
+				ContainerName: containerName,
+			})
+			if err != nil {
+				klog.Errorf("Cannot get traffic limit info while handling client from PID=%v, CtrID=%v: Error=%v", conn.PeerCredentials.Pid, state.ID, err)
+				goto FAIL_RELEASE
+			}
+			klog.V(2).Infof("Got traffic limit info for PID=%v, CtrID=%v (%v/%v/%v): %v", conn.PeerCredentials.Pid, state.ID, podNamespace, podName, containerName, trafficLimitInfo)
 
 			writeSuccess(conn)
 			return
 		}
 
 	FAIL_RELEASE:
-		containerIDToCgroup.Delete(state.ID)
+		h.containerIDToCgroup.Delete(state.ID)
 	FAIL:
 		return
 

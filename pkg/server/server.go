@@ -1,8 +1,10 @@
 package server
 
 import (
+	"context"
 	"net"
 	"os"
+	"sync"
 	"syscall"
 
 	"golang.org/x/sys/unix"
@@ -10,11 +12,14 @@ import (
 )
 
 type ClientHandler interface {
-	Handle(*ClientConn)
+	Handle(context.Context, *ClientConn)
 }
 
 type Server struct {
-	handler ClientHandler
+	handler  ClientHandler
+	wg       sync.WaitGroup
+	closed   bool
+	listener *net.UnixListener
 }
 
 type ClientConn struct {
@@ -25,6 +30,7 @@ type ClientConn struct {
 func New(handler ClientHandler) *Server {
 	return &Server{
 		handler: handler,
+		closed:  true,
 	}
 }
 
@@ -44,16 +50,27 @@ func (s *Server) ListenAndServe(address string) error {
 		return err
 	}
 	defer listener.Close()
+	s.closed = false
+	s.listener = listener
 
 	klog.Infof("Listening on %s", address)
 
 	for {
 		conn, err := listener.AcceptUnix()
 		if err != nil {
-			return err
+			s.wg.Wait()
+			if s.closed {
+				return nil
+			} else {
+				return err
+			}
 		}
 
-		go s.serveClient(conn)
+		s.wg.Add(1)
+		go func() {
+			s.serveClient(conn)
+			s.wg.Done()
+		}()
 	}
 }
 
@@ -72,8 +89,17 @@ func (s *Server) serveClient(conn *net.UnixConn) {
 		return
 	}
 	_ = f.Close()
-	s.handler.Handle(&ClientConn{
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.handler.Handle(ctx, &ClientConn{
 		Conn:            conn,
 		PeerCredentials: cred,
 	})
+}
+
+func (s *Server) Close() {
+	s.closed = true
+	s.listener.Close()
 }
