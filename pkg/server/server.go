@@ -20,6 +20,7 @@ type Server struct {
 	wg       sync.WaitGroup
 	closed   bool
 	listener *net.UnixListener
+	mu       sync.Mutex
 }
 
 type ClientConn struct {
@@ -30,7 +31,7 @@ type ClientConn struct {
 func New(handler ClientHandler) *Server {
 	return &Server{
 		handler: handler,
-		closed:  true,
+		closed:  false,
 	}
 }
 
@@ -43,15 +44,21 @@ func (s *Server) ListenAndServe(address string) error {
 	if err != nil {
 		return err
 	}
+	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		return nil
+	}
 	oldMask := unix.Umask(0077)
 	listener, err := net.ListenUnix("unixpacket", addr)
 	unix.Umask(oldMask)
 	if err != nil {
+		s.mu.Unlock()
 		return err
 	}
 	defer listener.Close()
-	s.closed = false
 	s.listener = listener
+	s.mu.Unlock()
 
 	klog.Infof("Listening on %s", address)
 
@@ -100,6 +107,8 @@ func (s *Server) serveClient(conn *net.UnixConn) {
 }
 
 func (s *Server) Close() {
+	s.mu.Lock()
 	s.closed = true
 	s.listener.Close()
+	s.mu.Unlock()
 }

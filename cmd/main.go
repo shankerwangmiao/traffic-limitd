@@ -4,6 +4,8 @@ import (
 	"errors"
 	goflags "flag"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -99,6 +101,18 @@ func run() {
 
 	clihandler := clienthandler.New(fetcher, limiter)
 	s := server.New(clihandler)
+
+	go func() {
+		//Signal Handler
+		c := make(chan os.Signal, 10)
+		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+
+		for sig := range c {
+			klog.Infof("Received signal: %v, exiting...", sig)
+			go s.Close()
+		}
+
+	}()
 
 	if err := s.ListenAndServe(listenSock); err != nil {
 		klog.Fatal(err)
