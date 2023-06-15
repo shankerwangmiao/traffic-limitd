@@ -11,6 +11,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
 
+	"k8s.innull.com/trafficlimitd/pkg/bpftrafficlimiter"
 	"k8s.innull.com/trafficlimitd/pkg/cgrouputils"
 	"k8s.innull.com/trafficlimitd/pkg/clienthandler"
 	"k8s.innull.com/trafficlimitd/pkg/k8sclient"
@@ -54,7 +55,6 @@ func init() {
 }
 
 func initConfig() {
-	maxTasks = maxTasks + maxTasks/5 + 5
 }
 
 func run() {
@@ -86,7 +86,18 @@ func run() {
 
 	fetcher := k8sclient.NewK8sTrafficLimitInfoFetcher(clientset)
 	defer fetcher.Close()
-	clihandler := clienthandler.New(fetcher)
+	limiter := &bpftrafficlimiter.Limiter
+	err = limiter.LoadBPF(maxTasks)
+	if err != nil {
+		klog.Fatal("Error encountered when loading ebpf program:", err)
+	}
+	defer limiter.Close()
+	err = limiter.ArmOnInterfaces(interfaces)
+	if err != nil {
+		klog.Fatal("Error encountered when setting up interfaces", err)
+	}
+
+	clihandler := clienthandler.New(fetcher, limiter)
 	s := server.New(clihandler)
 
 	if err := s.ListenAndServe(listenSock); err != nil {

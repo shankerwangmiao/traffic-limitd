@@ -9,6 +9,8 @@ import (
 	"github.com/vishvananda/netlink/nl"
 	"golang.org/x/sys/unix"
 	"k8s.io/klog/v2"
+
+	"k8s.innull.com/trafficlimitd/pkg/types"
 )
 
 var (
@@ -57,7 +59,7 @@ func GetCgroupV2MountPoint() (string, error) {
 	}
 }
 
-func GetCgroupID(pid int) (uint64, error) {
+func GetCgroupID(pid int) (types.CgroupID, error) {
 	dirfdOnce.Do(func() {
 		cgPath, err := GetCgroupV2MountPoint()
 		if err != nil {
@@ -82,7 +84,7 @@ func GetCgroupID(pid int) (uint64, error) {
 			return 0, fmt.Errorf("NameToHandleAt failed: %w", err)
 		}
 		b := handle.Bytes()[:8]
-		cgID := nl.NativeEndian().Uint64(b)
+		cgID := types.CgroupID(nl.NativeEndian().Uint64(b))
 
 		return cgID, nil
 	}

@@ -24,3 +24,11 @@ func (info *TrafficLimitInfo) String() string {
 type TrafficLimitInfoFetcher interface {
 	GetTrafficLimitInfo(ctx context.Context, containerHandle ContainerHandle) (TrafficLimitInfo, error)
 }
+
+type CgroupID uint64
+
+type TrafficLimiter interface {
+	ArmOnInterfaces(ifName []string) error
+	LimitTraffic(cgroupId CgroupID, trafficLimitInfo TrafficLimitInfo) error
+	UnlimitTraffic(cgroupId CgroupID) error
+}

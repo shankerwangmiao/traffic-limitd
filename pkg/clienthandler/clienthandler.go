@@ -47,11 +47,13 @@ import (
 type ClientHandler struct {
 	containerIDToCgroup sync.Map
 	fetcher             types.TrafficLimitInfoFetcher
+	limiter             types.TrafficLimiter
 }
 
-func New(fetcher types.TrafficLimitInfoFetcher) *ClientHandler {
+func New(fetcher types.TrafficLimitInfoFetcher, limiter types.TrafficLimiter) *ClientHandler {
 	return &ClientHandler{
 		fetcher: fetcher,
+		limiter: limiter,
 	}
 }
 
@@ -159,7 +161,17 @@ func (h *ClientHandler) Handle(ctx context.Context, conn *server.ClientConn) {
 			}
 			klog.V(2).Infof("Got traffic limit info for PID=%v, CtrID=%v (%v/%v/%v): %v", conn.PeerCredentials.Pid, state.ID, podNamespace, podName, containerName, trafficLimitInfo)
 
-			writeSuccess(conn)
+			err = h.limiter.LimitTraffic(cgrpID, trafficLimitInfo)
+			if err != nil {
+				klog.Errorf("Cannot set traffic limit for client from PID=%v, CtrID=%v: Error=%v", conn.PeerCredentials.Pid, state.ID, err)
+				goto FAIL_RELEASE
+			}
+			klog.Infof("Set limit for client PID=%v, CtrID=%v", conn.PeerCredentials.Pid, state.ID)
+
+			err = writeSuccess(conn)
+			if err != nil {
+				klog.Warningf("Write response failed for client PID=%v, CtrID=%v: %v", err)
+			}
 			return
 		}
 
@@ -169,7 +181,17 @@ func (h *ClientHandler) Handle(ctx context.Context, conn *server.ClientConn) {
 		return
 
 	} else if hookFrom == "poststop" {
-
+		val, exists := h.containerIDToCgroup.Load(state.ID)
+		if !exists {
+			klog.Errorf("Invalid request while handling client from PID=%v, CtrID=%v: startContainer hook not called", conn.PeerCredentials.Pid, state.ID)
+		} else {
+			cgrpID := val.(types.CgroupID)
+			_ = h.limiter.UnlimitTraffic(cgrpID)
+			klog.Info("Removed limit for client PID=%v, CtrID=%v", conn.PeerCredentials.Pid, state.ID)
+			h.containerIDToCgroup.Delete(state.ID)
+		}
+		writeSuccess(conn)
+		return
 	}
 
 }
