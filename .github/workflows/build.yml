@@ -1,0 +1,48 @@
+name: build-binary
+
+on:
+  push:
+    branches:
+      - k8s-go
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Pull Docker image
+        run: |
+          docker pull debian:bookworm
+      - name: Start Docker container
+        run: |
+          docker run -d --name build \
+            --user "$(id --user):$(id --group)" \
+            -v "$PWD":"$PWD" \
+            -w "$PWD" \
+            debian:bookworm tail -f /dev/null
+      - name: Install build dependencies
+        run: |
+          docker exec -i --user 0:0 build bash -e -o pipefail << 'EOF'
+          apt-get update
+          apt-get -y install --no-install-recommends libbpf-dev bpftool pkg-config clang build-essential golang ca-certificates
+          EOF
+      - name: Build
+        run: |
+          docker exec -i build bash -e -o pipefail << 'EOF'
+          mkdir -p /tmp/home
+          export HOME=/tmp/home
+          make
+          cd client/
+          make
+          EOF
+      - name: Copy binary
+        run: |
+          mkdir -p k8s-traffic-limitd
+          cp traffic-limitd k8s-traffic-limitd/
+          cp client/objs/traffic-limit-hook k8s-traffic-limitd/
+          tar -cvzf k8s-traffic-limitd.tar.gz k8s-traffic-limitd/
+      - name: Upload binary
+        uses: actions/upload-artifact@v2
+        with:
+          path: k8s-traffic-limitd.tar.gz
