@@ -86,7 +86,8 @@ func (h *ClientHandler) Handle(ctx context.Context, conn *server.ClientConn) {
 		return
 	}
 	hookFrom := string(args[0])
-	if hookFrom != "startContainer" && hookFrom != "poststop" {
+	if hookFrom != "createContainer" && hookFrom != "poststop" {
+		klog.Infof("Unknown hook %v called by client from PID=%v ", hookFrom, conn.PeerCredentials.Pid)
 		_ = writeSuccess(conn)
 		return
 	}
@@ -101,7 +102,7 @@ func (h *ClientHandler) Handle(ctx context.Context, conn *server.ClientConn) {
 		klog.Errorf("Invalid request while handling client from PID=%v, ID is empty", conn.PeerCredentials.Pid)
 		return
 	}
-	if hookFrom == "startContainer" {
+	if hookFrom == "createContainer" {
 		{
 			cgrpID, err := cgrouputils.GetCgroupID(int(conn.PeerCredentials.Pid))
 			if err != nil {
@@ -183,11 +184,11 @@ func (h *ClientHandler) Handle(ctx context.Context, conn *server.ClientConn) {
 	} else if hookFrom == "poststop" {
 		val, exists := h.containerIDToCgroup.Load(state.ID)
 		if !exists {
-			klog.Errorf("Invalid request while handling client from PID=%v, CtrID=%v: startContainer hook not called", conn.PeerCredentials.Pid, state.ID)
+			klog.Errorf("Invalid request while handling client from PID=%v, CtrID=%v: createContainer hook not called", conn.PeerCredentials.Pid, state.ID)
 		} else {
 			cgrpID := val.(types.CgroupID)
 			_ = h.limiter.UnlimitTraffic(cgrpID)
-			klog.Info("Removed limit for client PID=%v, CtrID=%v", conn.PeerCredentials.Pid, state.ID)
+			klog.Infof("Removed limit for client PID=%v, CtrID=%v", conn.PeerCredentials.Pid, state.ID)
 			h.containerIDToCgroup.Delete(state.ID)
 		}
 		writeSuccess(conn)
