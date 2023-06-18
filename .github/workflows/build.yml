@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Pull Docker image
         run: |
-          docker pull debian:bookworm
+          docker pull debian:bullseye
       - name: Cache Go builds
         uses: actions/cache@v2
         if: github.event_name == 'push'
@@ -26,17 +26,19 @@ jobs:
         run: |
           mkdir -p /tmp/gobuildcache
           chown -R "$(id --user):$(id --group)" /tmp/gobuildcache
+          wget -O /tmp/gobuildcache/go.tar.gz https://go.dev/dl/go1.20.5.linux-amd64.tar.gz
           docker run -d --name build \
             --user "$(id --user):$(id --group)" \
             -v "$PWD":"$PWD" \
             -v "/tmp/gobuildcache":"/tmp/gobuildcache" \
             -w "$PWD" \
-            debian:bookworm tail -f /dev/null
+            debian:bullseye tail -f /dev/null
       - name: Install build dependencies
         run: |
           docker exec -i --user 0:0 build bash -e -o pipefail << 'EOF'
           apt-get update
-          apt-get -y install --no-install-recommends libbpf-dev bpftool pkg-config clang build-essential golang ca-certificates
+          apt-get -y install --no-install-recommends libbpf-dev bpftool pkg-config clang build-essential ca-certificates
+          rm -rf /usr/local/go && tar -C /usr/local -xzf /tmp/gobuildcache/go.tar.gz
           EOF
       - name: Build
         run: |
@@ -45,6 +47,7 @@ jobs:
           export HOME=/tmp/home
           export GOCACHE=/tmp/gobuildcache
           export CFLAGS="$CFLAGS -fPIC"
+          export PATH=$PATH:/usr/local/go/bin
           make
           cd client/
           make
