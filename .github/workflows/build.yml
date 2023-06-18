@@ -44,6 +44,7 @@ jobs:
           mkdir -p /tmp/home
           export HOME=/tmp/home
           export GOCACHE=/tmp/gobuildcache
+          export CFLAGS="$CFLAGS -fPIC"
           make
           cd client/
           make
