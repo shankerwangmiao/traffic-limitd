@@ -14,11 +14,22 @@ jobs:
       - name: Pull Docker image
         run: |
           docker pull debian:bookworm
+      - name: Cache Go builds
+        uses: actions/cache@v2
+        if: github.event_name == 'push'
+        with:
+          path: /tmp/gobuildcache
+          key: go-build-${{ github.sha }}
+          restore-keys: |
+            go-build-
       - name: Start Docker container
         run: |
+          mkdir -p /tmp/gobuildcache
+          chown -R "$(id --user):$(id --group)" /tmp/gobuildcache
           docker run -d --name build \
             --user "$(id --user):$(id --group)" \
             -v "$PWD":"$PWD" \
+            -v "/tmp/gobuildcache":"/tmp/gobuildcache" \
             -w "$PWD" \
             debian:bookworm tail -f /dev/null
       - name: Install build dependencies
@@ -32,6 +43,7 @@ jobs:
           docker exec -i build bash -e -o pipefail << 'EOF'
           mkdir -p /tmp/home
           export HOME=/tmp/home
+          export GOCACHE=/tmp/gobuildcache
           make
           cd client/
           make
