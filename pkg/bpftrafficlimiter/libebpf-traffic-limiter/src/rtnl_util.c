@@ -70,7 +70,7 @@ int rtnl_open(struct rtnl_handle *rth){
         goto fail_close_fd;
 	}
     if (rth->local.nl_family != AF_NETLINK) {
-		fprintf(stderr, "Got wrong address family %d\n", rth->local.nl_family);
+		log_error("Got wrong address family %d\n", rth->local.nl_family);
         rc = -EINVAL;
 		goto fail_close_fd;
 	}
