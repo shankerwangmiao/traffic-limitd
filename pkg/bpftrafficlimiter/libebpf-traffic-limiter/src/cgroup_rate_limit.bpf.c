@@ -22,12 +22,14 @@
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
 
 /* Helper macro to print out debug messages */
+#ifndef bpf_printk
 #define bpf_printk(fmt, ...)                            \
 ({                                                      \
         char ____fmt[] = fmt;                           \
         bpf_trace_printk(____fmt, sizeof(____fmt),      \
                          ##__VA_ARGS__);                \
 })
+#endif
 
 #ifndef memset
 # define memset(dest, chr, n)   __builtin_memset((dest), (chr), (n))
