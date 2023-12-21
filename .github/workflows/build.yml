@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - k8s-go
+      - k8s-go-*
     tags: [ "*" ]
 
 jobs:
@@ -34,7 +35,7 @@ jobs:
             -v "/tmp/gobuildcache":"/tmp/gobuildcache" \
             -v "/tmp/gobuildcache/debcache":"/var/cache/apt/archives" \
             -w "$PWD" \
-            debian:bullseye tail -f /dev/null
+            debian:bookworm tail -f /dev/null
       - name: Install build dependencies
         run: |
           docker exec -i --user 0:0 build bash -e -o pipefail << 'EOF'
