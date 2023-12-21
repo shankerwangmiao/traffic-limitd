@@ -66,6 +66,9 @@ jobs:
         with:
           path: k8s-traffic-limitd.tar.gz
           name: k8s-traffic-limitd.tar.gz
+      - name: Fix Cache Permissions
+        run: |
+          sudo chown -R "$(id --user):$(id --group)" /tmp/gobuildcache
 
   release:
     needs: build
