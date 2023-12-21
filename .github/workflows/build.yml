@@ -32,6 +32,7 @@ jobs:
             --user "$(id --user):$(id --group)" \
             -v "$PWD":"$PWD" \
             -v "/tmp/gobuildcache":"/tmp/gobuildcache" \
+            -v "/tmp/gobuildcache/debcache":"/var/cache/apt/archives" \
             -w "$PWD" \
             debian:bullseye tail -f /dev/null
       - name: Install build dependencies
