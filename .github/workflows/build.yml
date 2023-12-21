@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - k8s-go
+    tags: [ "*" ]
 
 jobs:
   build:
@@ -15,7 +16,7 @@ jobs:
         run: |
           docker pull debian:bullseye
       - name: Cache Go builds
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         if: github.event_name == 'push'
         with:
           path: /tmp/gobuildcache
@@ -46,6 +47,7 @@ jobs:
           mkdir -p /tmp/home
           export HOME=/tmp/home
           export GOCACHE=/tmp/gobuildcache
+          export GOMODCACHE=$GOCACHE
           export CFLAGS="$CFLAGS -fPIC"
           export PATH=$PATH:/usr/local/go/bin
           make
@@ -59,6 +61,25 @@ jobs:
           cp client/objs/traffic-limit-hook k8s-traffic-limitd/
           tar -cvzf k8s-traffic-limitd.tar.gz k8s-traffic-limitd/
       - name: Upload binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           path: k8s-traffic-limitd.tar.gz
+          name: k8s-traffic-limitd.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download binary
+        uses: actions/download-artifact@v3
+        with:
+          name: k8s-traffic-limitd.tar.gz
+      - run:
+          ls -la
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: k8s-traffic-limitd.tar.gz
