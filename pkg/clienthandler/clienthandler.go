@@ -34,9 +34,11 @@ import (
 	"time"
 
 	criAnnotations "github.com/containerd/containerd/pkg/cri/annotations"
+	crioAnnotations "github.com/containers/podman/v4/pkg/annotations"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
 	"k8s.io/klog/v2"
+	kubeLabels "k8s.io/kubelet/pkg/types"
 
 	"k8s.innull.com/trafficlimitd/pkg/cgrouputils"
 	"k8s.innull.com/trafficlimitd/pkg/server"
@@ -118,32 +120,34 @@ func (h *ClientHandler) Handle(ctx context.Context, conn *server.ClientConn) {
 				goto FAIL
 			}
 
-			containerType, ok := state.Annotations[criAnnotations.ContainerType]
+			containerType, ok := getKeyFromMap(state.Annotations, criAnnotations.ContainerType, crioAnnotations.ContainerType)
 			if !ok {
 				klog.Errorf("Invalid request while handling client from PID=%v, CtrID=%v: container type not found in annotations", conn.PeerCredentials.Pid, state.ID)
 				goto FAIL_RELEASE
 			}
-			if containerType != criAnnotations.ContainerTypeContainer {
+			if containerType != criAnnotations.ContainerTypeContainer && containerType != crioAnnotations.ContainerTypeContainer {
 				_ = writeSuccess(conn)
 				goto FAIL_RELEASE
 			}
 
-			podNamespace, ok := state.Annotations[criAnnotations.SandboxNamespace]
+			// KubernetesPodNamespaceLabel should be in labels, but SpecAddAnnotations in cri-o copies all labels to annotations
+			// See: https://github.com/cri-o/cri-o/blob/v1.28.0/internal/factory/container/container.go#L261
+			podNamespace, ok := getKeyFromMap(state.Annotations, criAnnotations.SandboxNamespace, kubeLabels.KubernetesPodNamespaceLabel)
 			if !ok {
 				klog.Errorf("Invalid request while handling client from PID=%v, CtrID=%v: pod namespace not found in annotations", conn.PeerCredentials.Pid, state.ID)
 				goto FAIL_RELEASE
 			}
-			podName, ok := state.Annotations[criAnnotations.SandboxName]
+			podName, ok := getKeyFromMap(state.Annotations, criAnnotations.SandboxName, kubeLabels.KubernetesPodNameLabel)
 			if !ok {
 				klog.Errorf("Invalid request while handling client from PID=%v, CtrID=%v: pod name not found in annotations", conn.PeerCredentials.Pid, state.ID)
 				goto FAIL_RELEASE
 			}
-			podUUID, ok := state.Annotations[criAnnotations.SandboxUID]
+			podUUID, ok := getKeyFromMap(state.Annotations, criAnnotations.SandboxUID, kubeLabels.KubernetesPodUIDLabel)
 			if !ok {
 				klog.Errorf("Invalid request while handling client from PID=%v, CtrID=%v: pod uuid not found in annotations", conn.PeerCredentials.Pid, state.ID)
 				goto FAIL_RELEASE
 			}
-			containerName, ok := state.Annotations[criAnnotations.ContainerName]
+			containerName, ok := getKeyFromMap(state.Annotations, criAnnotations.ContainerName, kubeLabels.KubernetesContainerNameLabel)
 			if !ok {
 				klog.Errorf("Invalid request while handling client from PID=%v, CtrID=%v: container name not found in annotations", conn.PeerCredentials.Pid, state.ID)
 				goto FAIL_RELEASE
@@ -195,6 +199,16 @@ func (h *ClientHandler) Handle(ctx context.Context, conn *server.ClientConn) {
 		return
 	}
 
+}
+
+func getKeyFromMap[Key comparable, Val any](m map[Key]Val, keys ...Key) (Val, bool) {
+	for _, key := range keys {
+		if val, ok := m[key]; ok {
+			return val, true
+		}
+	}
+	var zero Val
+	return zero, false
 }
 
 func writeSuccess(conn *server.ClientConn) error {
