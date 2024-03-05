@@ -60,7 +60,7 @@ jobs:
           mkdir -p k8s-traffic-limitd
           cp traffic-limitd k8s-traffic-limitd/
           cp client/objs/traffic-limit-hook k8s-traffic-limitd/
-          tar -cvzf k8s-traffic-limitd.tar.gz k8s-traffic-limitd/
+          tar -cvz --owner=0 --group=0 -f k8s-traffic-limitd.tar.gz k8s-traffic-limitd/
       - name: Upload binary
         uses: actions/upload-artifact@v3
         with:
